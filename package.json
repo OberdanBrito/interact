@@ -1,0 +1,16 @@
+{
+  "name": "interact-admin",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Painel administrativo de comunicação interna entre empresa e colaboradores",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "vite": "^8.2.2"
+  }
+}

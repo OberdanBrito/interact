@@ -1,0 +1,17 @@
+# Dependências
+node_modules/
+
+# Build (regenerável com `npm run build`)
+dist/
+
+# Estado local de ferramentas de agente
+.omo/
+.playwright-mcp/
+.opencode/
+
+# Artefatos de evidência de teste
+qa-*.png
+
+# Sistema operacional
+.DS_Store
+Thumbs.db

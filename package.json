@@ -1,0 +1,19 @@
+{
+  "name": "interact",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "PWA de comunicação interna entre empresa e colaboradores",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "qa": "node scripts/qa-pwa.mjs"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "playwright-core": "^1.62.1",
+    "vite": "^8.2.2",
+    "vite-plugin-pwa": "^1.3.0"
+  }
+}

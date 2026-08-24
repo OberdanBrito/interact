@@ -1,0 +1,148 @@
+import { escapeHTML, relativeDate, fullDate, initialsOf } from "./utils.js";
+import { getCategoryLabel } from "./data.js";
+
+const icon = (name, size = 18) =>
+  `<svg width="${size}" height="${size}" aria-hidden="true" focusable="false"><use href="#${name}"/></svg>`;
+
+export function shellHTML({ user, sectionTitle, active }) {
+  const name = escapeHTML(user.name);
+  const email = escapeHTML(user.email);
+  const initials = escapeHTML(initialsOf(user.name));
+  return `
+    <div class="shell">
+      <aside class="sidebar">
+        <a class="brand" href="#/posts" aria-label="Interact Admin — início">
+          <span class="brand-mark" aria-hidden="true">I</span>
+          <span class="brand-text">
+            <strong>Interact</strong>
+            <span>Admin</span>
+          </span>
+        </a>
+        <nav class="sidebar-nav" aria-label="Navegação principal">
+          <a class="nav-item ${active === "posts" ? "is-active" : ""}" href="#/posts"
+             ${active === "posts" ? 'aria-current="page"' : ""}>
+            ${icon("i-megaphone")}
+            <span>Comunicados</span>
+          </a>
+        </nav>
+        <div class="sidebar-cta">
+          <a class="btn btn-primary btn-block" href="#/posts/nova">
+            ${icon("i-plus")}
+            <span>Nova publicação</span>
+          </a>
+        </div>
+        <p class="sidebar-foot">Interact Corp<br>Comunicação interna</p>
+      </aside>
+      <div class="shell-main">
+        <header class="topbar">
+          <h1 class="topbar-title">${escapeHTML(sectionTitle)}</h1>
+          <div class="topbar-user">
+            <span class="avatar" aria-hidden="true">${initials}</span>
+            <span class="topbar-user-text">
+              <strong>${name}</strong>
+              <span>${email}</span>
+            </span>
+            <button type="button" class="icon-btn js-logout" aria-label="Sair da conta" title="Sair">
+              ${icon("i-logout", 20)}
+            </button>
+          </div>
+        </header>
+        <main class="content" id="view" tabindex="-1"></main>
+      </div>
+    </div>`;
+}
+
+export function categoryBadgeHTML(categoryId) {
+  return `<span class="badge" data-cat="${escapeHTML(categoryId)}">${escapeHTML(
+    getCategoryLabel(categoryId)
+  )}</span>`;
+}
+
+export function urgentBadgeHTML() {
+  return `<span class="badge badge-urgent">${icon("i-alert", 12)} Urgente</span>`;
+}
+
+export function readModeLabel(readMode) {
+  return readMode === "ack" ? "Confirmação" : "Automática";
+}
+
+export function postRowHTML(post) {
+  const id = escapeHTML(post.id);
+  const title = escapeHTML(post.title);
+  return `
+    <tr data-post-id="${id}">
+      <td class="cell-post">
+        <div class="cell-title">
+          <span class="cell-title-text">${title}</span>
+          ${post.urgent ? urgentBadgeHTML() : ""}
+        </div>
+        <p class="cell-excerpt">${escapeHTML(post.body.join(" "))}</p>
+      </td>
+      <td>${categoryBadgeHTML(post.categoryId)}</td>
+      <td class="cell-meta">${readModeLabel(post.readMode)}</td>
+      <td class="cell-meta"><time datetime="${escapeHTML(post.dateISO)}"
+        title="${escapeHTML(fullDate(post.dateISO))}">${relativeDate(post.dateISO)}</time></td>
+      <td>
+        <div class="cell-author">
+          <span class="avatar avatar-sm" aria-hidden="true">${escapeHTML(
+            initialsOf(post.author.name)
+          )}</span>
+          <span class="cell-author-text">
+            <strong>${escapeHTML(post.author.name)}</strong>
+            <span>${escapeHTML(post.author.role)}</span>
+          </span>
+        </div>
+      </td>
+      <td>
+        <div class="cell-actions">
+          <a class="icon-btn" href="#/posts/${id}/editar"
+             aria-label="Editar comunicado: ${title}" title="Editar">
+            ${icon("i-edit")}
+          </a>
+          <button type="button" class="icon-btn icon-btn-danger js-delete" data-post-id="${id}"
+                  aria-label="Excluir comunicado: ${title}" title="Excluir">
+            ${icon("i-trash")}
+          </button>
+        </div>
+      </td>
+    </tr>`;
+}
+
+export function emptyStateHTML({ title, message, showCta = false }) {
+  return `
+    <div class="empty-state">
+      <span class="empty-state-icon" aria-hidden="true">${icon("i-inbox", 28)}</span>
+      <h2>${escapeHTML(title)}</h2>
+      <p>${escapeHTML(message)}</p>
+      ${
+        showCta
+          ? `<a class="btn btn-primary" href="#/posts/nova">${icon("i-plus")}<span>Criar primeiro comunicado</span></a>`
+          : ""
+      }
+    </div>`;
+}
+
+export function confirmModalHTML({ postTitle }) {
+  return `
+    <div class="modal-overlay js-modal-overlay">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"
+           aria-describedby="modal-desc">
+        <span class="modal-icon" aria-hidden="true">${icon("i-alert", 22)}</span>
+        <h2 id="modal-title">Excluir comunicado</h2>
+        <p id="modal-desc">
+          Tem certeza que deseja excluir <strong>“${escapeHTML(postTitle)}”</strong>?
+          Esta ação não pode ser desfeita.
+        </p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost js-modal-cancel">Cancelar</button>
+          <button type="button" class="btn btn-danger js-modal-confirm">
+            ${icon("i-trash")}<span>Excluir</span>
+          </button>
+        </div>
+      </div>
+    </div>`;
+}
+
+export function spinnerHTML(label) {
+  return `<span class="spinner" aria-hidden="true"></span><span>${escapeHTML(label)}</span>`;
+}

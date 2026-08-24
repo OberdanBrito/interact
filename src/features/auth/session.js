@@ -1,6 +1,6 @@
-import { state } from "./state.js";
-import { STORAGE_KEYS, storageGet, storageSet } from "./utils.js";
-import { login as apiLogin } from "./data.js";
+import { state } from "../../core/state.js";
+import { STORAGE_KEYS, storageGet, storageSet } from "../../core/utils.js";
+import { login as apiLogin } from "../../data/posts.js";
 
 export function getCurrentUser() {
   return state.user;

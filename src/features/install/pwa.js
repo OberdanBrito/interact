@@ -1,7 +1,7 @@
 import { registerSW } from "virtual:pwa-register";
-import { state } from "./state.js";
-import { $, STORAGE_KEYS, storageGet, storageSet } from "./utils.js";
-import { showToast } from "./toast.js";
+import { state } from "../../core/state.js";
+import { $, STORAGE_KEYS, storageGet, storageSet } from "../../core/utils.js";
+import { showToast } from "../../ui/toast.js";
 
 function isIOS() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent);

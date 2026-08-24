@@ -1,9 +1,9 @@
-import { state } from "./state.js";
-import { $, REDUCED_MOTION } from "./utils.js";
-import { getPostById } from "./data.js";
-import { toggleLikePersist, markReadPersist, getUserData } from "./session.js";
-import { actionButtonsHTML } from "./templates.js";
-import { showToast } from "./toast.js";
+import { state } from "../../core/state.js";
+import { $, REDUCED_MOTION } from "../../core/utils.js";
+import { getPostById } from "../../data/posts.js";
+import { toggleLikePersist, markReadPersist, getUserData } from "../auth/session.js";
+import { actionButtonsHTML } from "../feed/templates.js";
+import { showToast } from "../../ui/toast.js";
 
 export function toggleLike(postId) {
   const nowLiked = toggleLikePersist(postId);

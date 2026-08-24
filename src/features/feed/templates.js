@@ -1,5 +1,5 @@
-import { escapeHTML, relativeDate, initialsOf } from "./utils.js";
-import { getCategoryLabel } from "./data.js";
+import { escapeHTML, relativeDate, initialsOf } from "../../core/utils.js";
+import { getCategoryLabel } from "../../data/posts.js";
 
 export function actionButtonsHTML(post, { liked, read }) {
   const needsAck = post.readMode === "ack";

@@ -1,7 +1,7 @@
-import { state } from "./state.js";
-import { $ } from "./utils.js";
-import { getCategories, getPosts } from "./data.js";
-import { getUserData } from "./session.js";
+import { state } from "../../core/state.js";
+import { $ } from "../../core/utils.js";
+import { getCategories, getPosts } from "../../data/posts.js";
+import { getUserData } from "../auth/session.js";
 import { postCardHTML } from "./templates.js";
 
 export function resetFilter() {

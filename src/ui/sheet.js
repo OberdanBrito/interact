@@ -1,15 +1,15 @@
-import { state } from "./state.js";
+import { state } from "../core/state.js";
 import {
   $,
   REDUCED_MOTION,
   escapeHTML,
   relativeDate,
   initialsOf,
-} from "./utils.js";
-import { getPostById, getCategoryLabel } from "./data.js";
-import { getUserData } from "./session.js";
-import { actionButtonsHTML } from "./templates.js";
-import { cancelAutoRead, scheduleAutoRead } from "./autoread.js";
+} from "../core/utils.js";
+import { getPostById, getCategoryLabel } from "../data/posts.js";
+import { getUserData } from "../features/auth/session.js";
+import { actionButtonsHTML } from "../features/feed/templates.js";
+import { cancelAutoRead, scheduleAutoRead } from "../features/feed/autoread.js";
 
 function currentActionsHTML(post) {
   const userData = getUserData();

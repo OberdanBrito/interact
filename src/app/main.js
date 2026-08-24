@@ -1,20 +1,20 @@
-import { state } from "./state.js";
-import { $, initialsOf } from "./utils.js";
-import { restoreSession, login, logout, getCurrentUser } from "./session.js";
-import { renderChips, renderFeed, resetFilter } from "./feed.js";
+import { state } from "../core/state.js";
+import { $, initialsOf } from "../core/utils.js";
+import { restoreSession, login, logout, getCurrentUser } from "../features/auth/session.js";
+import { renderChips, renderFeed, resetFilter } from "../features/feed/feed.js";
 import {
   bindActionContainer,
   toggleLike,
   confirmReading,
-} from "./interactions.js";
+} from "../features/interactions/interactions.js";
 import {
   openSheet,
   closeSheet,
   trapSheetFocus,
-} from "./sheet.js";
-import { handleSheetScroll } from "./autoread.js";
-import { hideToast } from "./toast.js";
-import { initPWA } from "./pwa.js";
+} from "../ui/sheet.js";
+import { handleSheetScroll } from "../features/feed/autoread.js";
+import { hideToast } from "../ui/toast.js";
+import { initPWA } from "../features/install/pwa.js";
 
 function showView(view) {
   $("#view-login").hidden = view !== "login";

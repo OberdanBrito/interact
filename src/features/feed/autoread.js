@@ -1,8 +1,8 @@
-import { state } from "./state.js";
-import { $ } from "./utils.js";
-import { getPostById } from "./data.js";
-import { markReadPersist } from "./session.js";
-import { syncPostUI } from "./interactions.js";
+import { state } from "../../core/state.js";
+import { $ } from "../../core/utils.js";
+import { getPostById } from "../../data/posts.js";
+import { markReadPersist } from "../auth/session.js";
+import { syncPostUI } from "../interactions/interactions.js";
 
 const AUTO_READ_DWELL_MS = 3000;
 

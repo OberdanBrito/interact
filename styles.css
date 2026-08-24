@@ -1,0 +1,33 @@
+/* ===== Interact Admin — base ===== */
+/* Tokens alinhados com a identidade visual da PWA (DESIGN.md) */
+:root {
+  --color-primary: #0F2B52;
+  --color-bg: #F4F7FB;
+  --color-text: #1A2233;
+  --color-surface: #FFFFFF;
+  --font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+h1 {
+  color: var(--color-primary);
+}

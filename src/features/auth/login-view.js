@@ -1,6 +1,6 @@
-import { login } from "../session.js";
-import { showToast } from "../toast.js";
-import { spinnerHTML } from "../templates.js";
+import { login } from "./session.js";
+import { showToast } from "../../ui/toast.js";
+import { spinnerHTML } from "../../ui/templates.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

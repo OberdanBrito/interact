@@ -1,7 +1,7 @@
-import { CATEGORIES, getPost, createPost, updatePost } from "../data.js";
-import { escapeHTML } from "../utils.js";
-import { spinnerHTML } from "../templates.js";
-import { showToast } from "../toast.js";
+import { CATEGORIES, getPost, createPost, updatePost } from "../../data/posts.js";
+import { escapeHTML } from "../../core/utils.js";
+import { spinnerHTML } from "../../ui/templates.js";
+import { showToast } from "../../ui/toast.js";
 
 const FIELDS = ["title", "category", "author-name", "author-role", "body"];
 

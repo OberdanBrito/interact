@@ -2,7 +2,7 @@
    Contrato estável para futura troca por API real:
    mantenha as assinaturas das funções exportadas. */
 
-import { STORAGE_KEYS, storageGet, storageSet, uid } from "./utils.js";
+import { STORAGE_KEYS, storageGet, storageSet, uid } from "../core/utils.js";
 
 /* "todas" não é categoria — existe apenas como filtro na listagem. */
 export const CATEGORIES = [

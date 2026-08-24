@@ -1,11 +1,11 @@
-import { state } from "./state.js";
-import { $ } from "./utils.js";
-import { shellHTML } from "./templates.js";
-import { logout } from "./session.js";
-import { showToast } from "./toast.js";
-import * as loginView from "./views/login.js";
-import * as postsListView from "./views/posts-list.js";
-import * as postFormView from "./views/post-form.js";
+import { state } from "../core/state.js";
+import { $ } from "../core/utils.js";
+import { shellHTML } from "../ui/templates.js";
+import { logout } from "../features/auth/session.js";
+import { showToast } from "../ui/toast.js";
+import * as loginView from "../features/auth/login-view.js";
+import * as postsListView from "../features/posts/list-view.js";
+import * as postFormView from "../features/posts/form-view.js";
 
 function parseRoute() {
   const parts = location.hash.replace(/^#/, "").split("/").filter(Boolean);

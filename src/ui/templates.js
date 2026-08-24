@@ -1,5 +1,5 @@
-import { escapeHTML, relativeDate, fullDate, initialsOf } from "./utils.js";
-import { getCategoryLabel } from "./data.js";
+import { escapeHTML, relativeDate, fullDate, initialsOf } from "../core/utils.js";
+import { getCategoryLabel } from "../data/posts.js";
 
 const icon = (name, size = 18) =>
   `<svg width="${size}" height="${size}" aria-hidden="true" focusable="false"><use href="#${name}"/></svg>`;

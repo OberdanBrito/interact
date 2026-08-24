@@ -1,8 +1,8 @@
-import { state } from "../state.js";
-import { CATEGORIES, listPosts, getPost, deletePost } from "../data.js";
-import { postRowHTML, emptyStateHTML, confirmModalHTML } from "../templates.js";
-import { $, normalizeText } from "../utils.js";
-import { showToast } from "../toast.js";
+import { state } from "../../core/state.js";
+import { CATEGORIES, listPosts, getPost, deletePost } from "../../data/posts.js";
+import { postRowHTML, emptyStateHTML, confirmModalHTML } from "../../ui/templates.js";
+import { $, normalizeText } from "../../core/utils.js";
+import { showToast } from "../../ui/toast.js";
 
 function filterPosts(posts) {
   const term = normalizeText(state.search.trim());

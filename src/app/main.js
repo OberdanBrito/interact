@@ -1,5 +1,5 @@
 // Interact Admin — composition root.
-import { restoreSession } from "./session.js";
+import { restoreSession } from "../features/auth/session.js";
 import { initRouter } from "./router.js";
 
 restoreSession();

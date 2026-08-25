@@ -8,8 +8,8 @@ export function resetFilter() {
   state.filter = "todas";
 }
 
-function visiblePosts() {
-  const posts = getPosts();
+async function visiblePosts() {
+  const posts = await getPosts();
   if (state.filter === "todas") return posts;
   return posts.filter((post) => post.categoryId === state.filter);
 }
@@ -33,11 +33,11 @@ export function renderChips() {
   }
 }
 
-export function renderFeed() {
+export async function renderFeed() {
   const list = $("#post-list");
   const empty = $("#empty-state");
   const userData = getUserData();
-  const posts = visiblePosts();
+  const posts = await visiblePosts();
 
   empty.hidden = posts.length > 0;
   list.innerHTML = posts

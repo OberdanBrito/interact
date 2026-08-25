@@ -1,6 +1,6 @@
 import { state } from "../../core/state.js";
 import { STORAGE_KEYS, storageGet, storageSet } from "../../core/utils.js";
-import { login as apiLogin } from "../../data/posts.js";
+import { login as apiLogin, setToken } from "../../data/posts.js";
 
 export function getCurrentUser() {
   return state.user;
@@ -21,6 +21,7 @@ export function restoreSession() {
   const session = storageGet(STORAGE_KEYS.session, null);
   if (session && session.email) {
     state.user = session;
+    if (session.token) setToken(session.token);
     loadUserData(session.email);
     return true;
   }

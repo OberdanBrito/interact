@@ -1,16 +1,15 @@
 services:
-  postgres:
-    image: postgres:16-alpine
+  mongo:
+    image: mongo:7
     environment:
-      POSTGRES_USER: interact
-      POSTGRES_PASSWORD: interact
-      POSTGRES_DB: interact
+      MONGO_INITDB_ROOT_USERNAME: interact
+      MONGO_INITDB_ROOT_PASSWORD: interact
     ports:
-      - "5432:5432"
+      - "27017:27017"
     volumes:
-      - interact-db:/var/lib/postgresql/data
+      - interact-db:/data/db
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U interact"]
+      test: ["CMD-SHELL", "mongosh --eval \"db.adminCommand('ping')\""]
       interval: 2s
       timeout: 3s
       retries: 10

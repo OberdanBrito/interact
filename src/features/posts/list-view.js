@@ -14,8 +14,8 @@ function filterPosts(posts) {
   });
 }
 
-function renderRows(root) {
-  const posts = listPosts();
+async function renderRows(root) {
+  const posts = await listPosts();
   const filtered = filterPosts(posts);
   const tbody = root.querySelector("#posts-tbody");
   const empty = root.querySelector("#list-empty");
@@ -77,8 +77,8 @@ function openConfirmModal(post, root) {
     if (event.target === overlay) closeModal();
   });
   cancel.addEventListener("click", closeModal);
-  confirm.addEventListener("click", () => {
-    deletePost(post.id);
+  confirm.addEventListener("click", async () => {
+    await deletePost(post.id);
     closeModal();
     showToast("Comunicado excluído com sucesso");
     renderRows(root);
@@ -138,10 +138,10 @@ export function render(root) {
     renderRows(root);
   });
 
-  root.querySelector("#posts-tbody").addEventListener("click", (event) => {
+  root.querySelector("#posts-tbody").addEventListener("click", async (event) => {
     const btn = event.target.closest(".js-delete");
     if (!btn) return;
-    const post = getPost(btn.dataset.postId);
+    const post = await getPost(btn.dataset.postId);
     if (post) openConfirmModal(post, root);
   });
 

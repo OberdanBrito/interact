@@ -45,9 +45,9 @@ function readModeCardHTML(value, title, hint, checked) {
     </label>`;
 }
 
-export function render(root, { id } = {}) {
+export async function render(root, { id } = {}) {
   const editing = Boolean(id);
-  const post = editing ? getPost(id) : null;
+  const post = editing ? await getPost(id) : null;
 
   if (editing && !post) {
     showToast("Comunicado não encontrado");
@@ -223,16 +223,29 @@ export function render(root, { id } = {}) {
     submit.classList.add("is-loading");
     submit.innerHTML = spinnerHTML(editing ? "Salvando…" : "Publicando…");
 
-    /* Latência simulada — mantém o estado de loading perceptível. */
-    setTimeout(() => {
-      if (editing) {
-        updatePost(id, data);
-        showToast("Comunicado atualizado com sucesso");
-      } else {
-        createPost(data);
-        showToast("Comunicado publicado com sucesso");
+    /* Pequeno delay — mantém o estado de loading perceptível. */
+    setTimeout(async () => {
+      try {
+        if (editing) {
+          await updatePost(id, data);
+        } else {
+          await createPost(data);
+        }
+        showToast(
+          editing
+            ? "Comunicado atualizado com sucesso"
+            : "Comunicado publicado com sucesso"
+        );
+        location.hash = "#/posts";
+      } catch (err) {
+        submit.disabled = false;
+        submit.classList.remove("is-loading");
+        submit.innerHTML =
+          "<span>" +
+          (editing ? "Salvar alterações" : "Publicar comunicado") +
+          "</span>";
+        showToast("Erro ao salvar: " + err.message);
       }
-      location.hash = "#/posts";
     }, 600);
   });
 }

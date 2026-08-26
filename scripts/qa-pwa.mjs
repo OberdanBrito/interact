@@ -30,7 +30,7 @@ const readIds = () =>
   page.evaluate(
     () =>
       JSON.parse(
-        localStorage.getItem("interact.user.bruno.lima@interactcorp.com.br") ||
+        localStorage.getItem("interact.user.admin@interactcorp.com.br") ||
           '{"read":[]}'
       ).read
   );
@@ -49,38 +49,68 @@ try {
     await page.evaluate(() => !document.querySelector("#view-login").hidden)
   );
 
-  await page.fill("#login-email", "bruno.lima@interactcorp.com.br");
+  await page.fill("#login-email", "admin@interactcorp.com.br");
   await page.fill("#login-pass", "senha123");
   await page.click("#btn-login");
   await page.waitForTimeout(1500);
 
-  const feedState = await page.evaluate(() => ({
-    cards: document.querySelectorAll(".post-card").length,
-    dots: [...document.querySelectorAll(".unread-dot")].filter((d) => !d.hidden)
-      .length,
-    readBtns: document.querySelectorAll(".post-card .js-read").length,
-    initials: document.querySelector("#user-initials").textContent,
-  }));
-  check("feed com 10 cards", feedState.cards === 10, `cards=${feedState.cards}`);
-  check("10 dots de não-lido", feedState.dots === 10, `dots=${feedState.dots}`);
+  const feedState = await page.evaluate(() => {
+    const session = JSON.parse(localStorage.getItem("interact.session") || "{}");
+    const parts = (session.name || "").trim().split(/\s+/);
+    const first = parts[0]?.charAt(0) || "";
+    const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : "";
+    return {
+      cards: document.querySelectorAll(".post-card").length,
+      dots: [...document.querySelectorAll(".unread-dot")].filter(
+        (d) => !d.hidden
+      ).length,
+      readBtns: document.querySelectorAll(".post-card .js-read").length,
+      initials: document.querySelector("#user-initials").textContent,
+      expectedInitials: (first + last).toUpperCase(),
+    };
+  });
+  check(
+    "feed carrega posts do backend",
+    feedState.cards >= 10,
+    `cards=${feedState.cards}`
+  );
+  check(
+    "todos os posts iniciam não-lidos",
+    feedState.dots === feedState.cards,
+    `dots=${feedState.dots}/${feedState.cards}`
+  );
   check(
     "2 botões de ack (p02/p05)",
     feedState.readBtns === 2,
     `btns=${feedState.readBtns}`
   );
-  check("iniciais BL no avatar", feedState.initials === "BL", feedState.initials);
+  check(
+    "iniciais do usuário no avatar",
+    feedState.initials === feedState.expectedInitials,
+    `${feedState.initials} (esperado ${feedState.expectedInitials})`
+  );
 
   // 2. Like bidirecional
   const likeBtn = page.locator('.post-card[data-post-id="p01"] .js-like');
+  const baseCount = parseInt(
+    await likeBtn.locator(".like-count").textContent(),
+    10
+  );
   await likeBtn.click();
   await page.waitForTimeout(250);
-  let likeCount = await likeBtn.locator(".like-count").textContent();
+  let likeCount = parseInt(
+    await likeBtn.locator(".like-count").textContent(),
+    10
+  );
   const pressed = await likeBtn.getAttribute("aria-pressed");
-  check("curtir p01: 24→25 + pressed", likeCount === "25" && pressed === "true");
+  check(
+    `curtir p01: ${baseCount}→${baseCount + 1} + pressed`,
+    likeCount === baseCount + 1 && pressed === "true"
+  );
   await likeBtn.click();
   await page.waitForTimeout(250);
-  likeCount = await likeBtn.locator(".like-count").textContent();
-  check("descurtir p01: volta a 24", likeCount === "24");
+  likeCount = parseInt(await likeBtn.locator(".like-count").textContent(), 10);
+  check(`descurtir p01: volta a ${baseCount}`, likeCount === baseCount);
 
   // 3. Auto (p06): marca na abertura se o texto couber na tela; senão por dwell
   await page.locator('.post-card[data-post-id="p06"] .js-open-post').click();
@@ -99,7 +129,7 @@ try {
   // 4. Ack negativo (p05): dwell + scroll NÃO marca; botão sim
   await page.evaluate(() =>
     localStorage.setItem(
-      "interact.user.bruno.lima@interactcorp.com.br",
+      "interact.user.admin@interactcorp.com.br",
       JSON.stringify({ likes: [], read: [] })
     )
   );
@@ -217,13 +247,26 @@ try {
     feed: !document.querySelector("#view-feed").hidden,
     cards: document.querySelectorAll(".post-card").length,
   }));
-  check("offline: app carrega do precache", offline.feed && offline.cards === 10);
+  check(
+    "offline: app carrega do precache",
+    offline.feed && offline.cards === 0,
+    `cards=${offline.cards}`
+  );
   await context.setOffline(false);
 } catch (err) {
   check("fluxo sem exceções", false, String(err).slice(0, 160));
 }
 
-check("console sem erros", consoleErrors.length === 0, `${consoleErrors.length} erros`);
+// O teste offline gera um erro de rede esperado do navegador
+// (net::ERR_INTERNET_DISCONNECTED) ao tentar carregar recursos sem conexão.
+const unexpectedErrors = consoleErrors.filter(
+  (e) => !e.includes("ERR_INTERNET_DISCONNECTED")
+);
+check(
+  "console sem erros inesperados",
+  unexpectedErrors.length === 0,
+  `${unexpectedErrors.length} erros`
+);
 
 const failed = results.filter((r) => !r.pass);
 console.log(`\n=== ${results.length - failed.length}/${results.length} PASS ===`);

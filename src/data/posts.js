@@ -35,13 +35,17 @@ export async function login(email, password) {
 
 export async function getPosts() {
   if (!TOKEN) return [];
-  const res = await fetch(`${API_BASE}/api/posts`, {
-    headers: { Authorization: `Bearer ${TOKEN}` },
-  });
-  if (!res.ok) return [];
-  const posts = await res.json();
-  CACHE = posts;
-  return posts;
+  try {
+    const res = await fetch(`${API_BASE}/api/posts`, {
+      headers: { Authorization: `Bearer ${TOKEN}` },
+    });
+    if (!res.ok) return [];
+    const posts = await res.json();
+    CACHE = posts;
+    return posts;
+  } catch {
+    return []; // offline ou rede indisponível: feed vazio gracioso
+  }
 }
 
 export function getPostById(id) {

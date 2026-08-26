@@ -502,6 +502,7 @@ h1, h2, p { margin: 0; }
   transform: translate(-50%, 100%);
   width: 100%;
   max-width: 480px;
+  height: 88dvh;
   max-height: 88dvh;
   display: flex;
   flex-direction: column;
@@ -534,6 +535,7 @@ h1, h2, p { margin: 0; }
 .sheet-close:hover { background: var(--navy-100); }
 
 .sheet-body {
+  flex: 1;
   overflow-y: auto;
   padding: 28px 20px 16px;
   overscroll-behavior: contain;

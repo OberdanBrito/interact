@@ -24,6 +24,11 @@ export function shellHTML({ user, sectionTitle, active }) {
             ${icon("i-megaphone")}
             <span>Comunicados</span>
           </a>
+          <a class="nav-item ${active === "groups" ? "is-active" : ""}" href="#/groups"
+             ${active === "groups" ? 'aria-current="page"' : ""}>
+            ${icon("i-users")}
+            <span>Grupos</span>
+          </a>
         </nav>
         <div class="sidebar-cta">
           <a class="btn btn-primary btn-block" href="#/posts/nova">
@@ -62,6 +67,10 @@ export function urgentBadgeHTML() {
   return `<span class="badge badge-urgent">${icon("i-alert", 12)} Urgente</span>`;
 }
 
+export function targetedBadgeHTML() {
+  return `<span class="badge badge-targeted">${icon("i-users", 12)} Direcionado</span>`;
+}
+
 export function readModeLabel(readMode) {
   return readMode === "ack" ? "Confirmação" : "Automática";
 }
@@ -75,6 +84,7 @@ export function postRowHTML(post) {
         <div class="cell-title">
           <span class="cell-title-text">${title}</span>
           ${post.urgent ? urgentBadgeHTML() : ""}
+          ${(post.targetGroups || []).length > 0 ? targetedBadgeHTML() : ""}
         </div>
         <p class="cell-excerpt">${escapeHTML(post.body.join(" "))}</p>
       </td>
@@ -108,7 +118,44 @@ export function postRowHTML(post) {
     </tr>`;
 }
 
-export function emptyStateHTML({ title, message, showCta = false }) {
+export function groupRowHTML(group) {
+  const id = escapeHTML(group.id);
+  const name = escapeHTML(group.name);
+  return `
+    <tr data-group-id="${id}">
+      <td class="cell-post">
+        <div class="cell-title">
+          <span class="cell-title-text">${name}</span>
+        </div>
+      </td>
+      <td>
+        ${
+          group.active
+            ? '<span class="badge badge-status-active">Ativo</span>'
+            : '<span class="badge badge-status-inactive">Inativo</span>'
+        }
+      </td>
+      <td>
+        <div class="cell-actions">
+          <a class="icon-btn" href="#/groups/${id}/editar"
+             aria-label="Editar grupo: ${name}" title="Editar">
+            ${icon("i-edit")}
+          </a>
+          <button type="button" class="btn btn-ghost js-toggle-active" data-group-id="${id}">
+            ${group.active ? "Desativar" : "Ativar"}
+          </button>
+        </div>
+      </td>
+    </tr>`;
+}
+
+export function emptyStateHTML({
+  title,
+  message,
+  showCta = false,
+  ctaHref = "#/posts/nova",
+  ctaLabel = "Criar primeiro comunicado",
+}) {
   return `
     <div class="empty-state">
       <span class="empty-state-icon" aria-hidden="true">${icon("i-inbox", 28)}</span>
@@ -116,7 +163,7 @@ export function emptyStateHTML({ title, message, showCta = false }) {
       <p>${escapeHTML(message)}</p>
       ${
         showCta
-          ? `<a class="btn btn-primary" href="#/posts/nova">${icon("i-plus")}<span>Criar primeiro comunicado</span></a>`
+          ? `<a class="btn btn-primary" href="${ctaHref}">${icon("i-plus")}<span>${escapeHTML(ctaLabel)}</span></a>`
           : ""
       }
     </div>`;
@@ -137,6 +184,32 @@ export function confirmModalHTML({ postTitle }) {
           <button type="button" class="btn btn-ghost js-modal-cancel">Cancelar</button>
           <button type="button" class="btn btn-danger js-modal-confirm">
             ${icon("i-trash")}<span>Excluir</span>
+          </button>
+        </div>
+      </div>
+    </div>`;
+}
+
+export function sendConfirmModalHTML({ title, recipientCount, isBroadcast }) {
+  return `
+    <div class="modal-overlay js-modal-overlay">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"
+           aria-describedby="modal-desc">
+        <span class="modal-icon ${isBroadcast ? "modal-icon-broadcast" : "modal-icon-send"}"
+              aria-hidden="true">${icon(isBroadcast ? "i-alert" : "i-users", 22)}</span>
+        <h2 id="modal-title">${isBroadcast ? "Enviar para todos?" : "Confirmar envio"}</h2>
+        <p id="modal-desc">
+          ${
+            isBroadcast
+              ? `Este comunicado será enviado a <strong>TODOS os ${recipientCount} colaboradores</strong>. Esta ação não pode ser desfeita. Confirmar envio?`
+              : `Este comunicado será enviado a <strong>${recipientCount} colaboradores</strong> dos grupos selecionados. Confirmar envio?`
+          }
+        </p>
+        <p class="modal-post-title">“${escapeHTML(title)}”</p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost js-modal-cancel">Cancelar</button>
+          <button type="button" class="btn btn-primary js-modal-confirm">
+            ${icon("i-megaphone")}<span>Confirmar envio</span>
           </button>
         </div>
       </div>

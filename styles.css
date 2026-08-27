@@ -551,6 +551,60 @@ button {
   outline-offset: 2px;
 }
 
+/* Checkboxes de grupos-alvo (form de comunicado) */
+
+.group-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.group-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out),
+              background-color var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.group-option:hover {
+  border-color: var(--navy-500);
+}
+
+.group-option:has(input:checked) {
+  border-color: var(--navy-800);
+  background: var(--navy-050);
+  box-shadow: 0 0 0 1px var(--navy-800);
+}
+
+.group-option input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--navy-800);
+  flex-shrink: 0;
+}
+
+.group-option-text {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.group-option.is-disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+.group-option.is-disabled:hover {
+  border-color: var(--border);
+}
+
 /* Toggle (urgente) */
 
 .toggle {
@@ -643,6 +697,22 @@ button {
 .badge-urgent {
   color: var(--danger);
   background: var(--danger-bg);
+}
+
+.badge-targeted {
+  color: var(--navy-800);
+  background: var(--navy-100);
+}
+
+.badge-status-active {
+  color: var(--success);
+  background: var(--success-bg);
+}
+
+.badge-status-inactive {
+  color: var(--text-secondary);
+  background: var(--bg);
+  border: 1px solid var(--border);
 }
 
 /* ===== Lista de comunicados ===== */
@@ -797,6 +867,16 @@ tbody tr:hover {
   display: flex;
   gap: 4px;
   justify-content: flex-end;
+}
+
+/* Página de grupos — tabela de 3 colunas não precisa do min-width da lista de posts */
+
+#groups-table {
+  min-width: 0;
+}
+
+#groups-table .cell-actions {
+  align-items: center;
 }
 
 /* Empty state */
@@ -977,6 +1057,24 @@ tbody tr:hover {
   background: var(--danger-bg);
   color: var(--danger);
   margin-bottom: 16px;
+}
+
+.modal-icon-send {
+  background: var(--navy-100);
+  color: var(--navy-800);
+}
+
+.modal-icon-broadcast {
+  background: var(--warning-bg);
+  color: var(--cat-beneficios);
+}
+
+.modal-post-title {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--navy-050);
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .modal h2 {

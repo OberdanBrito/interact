@@ -1,6 +1,7 @@
 import { state } from "../../core/state.js";
 import { STORAGE_KEYS, storageGet, storageSet, storageRemove } from "../../core/utils.js";
 import { login as apiLogin, setToken } from "../../data/posts.js";
+import { setToken as setGroupsToken } from "../../data/groups.js";
 
 export function getCurrentUser() {
   return state.user;
@@ -10,7 +11,10 @@ export function restoreSession() {
   const session = storageGet(STORAGE_KEYS.session, null);
   if (session && session.email) {
     state.user = session;
-    if (session.token) setToken(session.token);
+    if (session.token) {
+      setToken(session.token);
+      setGroupsToken(session.token);
+    }
     return true;
   }
   return false;
@@ -20,6 +24,7 @@ export async function login(email, password) {
   const user = await apiLogin(email, password);
   state.user = user;
   storageSet(STORAGE_KEYS.session, user);
+  setGroupsToken(user.token);
   return user;
 }
 

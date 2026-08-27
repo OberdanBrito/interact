@@ -1,6 +1,8 @@
 import { CATEGORIES, getPost, createPost, updatePost } from "../../data/posts.js";
-import { escapeHTML } from "../../core/utils.js";
-import { spinnerHTML } from "../../ui/templates.js";
+import { listGroups, getRecipientCount } from "../../data/groups.js";
+import { state } from "../../core/state.js";
+import { $, escapeHTML } from "../../core/utils.js";
+import { spinnerHTML, sendConfirmModalHTML } from "../../ui/templates.js";
 import { showToast } from "../../ui/toast.js";
 
 const FIELDS = ["title", "category", "author-name", "author-role", "body"];
@@ -45,6 +47,15 @@ function readModeCardHTML(value, title, hint, checked) {
     </label>`;
 }
 
+function groupOptionHTML(group, checked, disabled) {
+  return `
+    <label class="group-option ${disabled ? "is-disabled" : ""}">
+      <input type="checkbox" name="target-groups" value="${escapeHTML(group.id)}"
+             ${checked ? "checked" : ""} ${disabled ? "disabled" : ""}>
+      <span class="group-option-text">${escapeHTML(group.name)}</span>
+    </label>`;
+}
+
 export async function render(root, { id } = {}) {
   const editing = Boolean(id);
   const post = editing ? await getPost(id) : null;
@@ -62,7 +73,14 @@ export async function render(root, { id } = {}) {
     urgent: false,
     author: { name: "", role: "" },
     body: [],
+    targetGroups: [],
   };
+  const selectedGroups = values.targetGroups || [];
+
+  /* Alvo imutável após publicação — em edição, exibe também grupos-alvo já desativados. */
+  const groups = (await listGroups()).filter(
+    (group) => group.active || (editing && selectedGroups.includes(group.id))
+  );
 
   root.innerHTML = `
     <a class="back-link" href="#/posts">
@@ -126,6 +144,30 @@ export async function render(root, { id } = {}) {
         </div>
       </fieldset>
 
+      <fieldset class="field fieldset">
+        <legend class="field-label">Grupos-alvo (opcional)</legend>
+        ${
+          groups.length > 0
+            ? `<div class="group-options">
+                 ${groups
+                   .map((group) =>
+                     groupOptionHTML(
+                       group,
+                       selectedGroups.includes(group.id),
+                       editing
+                     )
+                   )
+                   .join("")}
+               </div>`
+            : '<p class="field-hint">Nenhum grupo ativo cadastrado.</p>'
+        }
+        <p class="field-hint">${
+          editing
+            ? "O público-alvo não pode ser alterado após a publicação."
+            : "Sem seleção, o comunicado é enviado a todos os colaboradores (broadcast)."
+        }</p>
+      </fieldset>
+
       <div class="form-grid">
         <div class="field">
           <label class="field-label" for="f-author-name">Autor — nome</label>
@@ -184,6 +226,85 @@ export async function render(root, { id } = {}) {
     }
   });
 
+  const setLoading = (loading) => {
+    submit.disabled = loading;
+    submit.classList.toggle("is-loading", loading);
+    submit.innerHTML = loading
+      ? spinnerHTML(editing ? "Salvando…" : "Publicando…")
+      : "<span>" + (editing ? "Salvar alterações" : "Publicar comunicado") + "</span>";
+  };
+
+  function closeSendModal() {
+    $("#modal-root").innerHTML = "";
+    if (state.modalKeyHandler) {
+      document.removeEventListener("keydown", state.modalKeyHandler);
+      state.modalKeyHandler = null;
+    }
+  }
+
+  /* Pequeno delay — mantém o estado de loading perceptível. */
+  function persist(data) {
+    setLoading(true);
+    setTimeout(async () => {
+      try {
+        if (editing) {
+          await updatePost(id, data);
+        } else {
+          await createPost(data);
+        }
+        showToast(
+          editing
+            ? "Comunicado atualizado com sucesso"
+            : "Comunicado publicado com sucesso"
+        );
+        location.hash = "#/posts";
+      } catch (err) {
+        setLoading(false);
+        showToast("Erro ao salvar: " + err.message);
+      }
+    }, 600);
+  }
+
+  async function openSendConfirmModal(data) {
+    submit.disabled = true;
+    let count;
+    try {
+      ({ count } = await getRecipientCount(data.targetGroups));
+    } catch (err) {
+      showToast("Erro ao calcular destinatários: " + err.message);
+      submit.disabled = false;
+      return;
+    }
+    submit.disabled = false;
+
+    const modalRoot = $("#modal-root");
+    modalRoot.innerHTML = sendConfirmModalHTML({
+      title: data.title,
+      recipientCount: count,
+      isBroadcast: data.targetGroups.length === 0,
+    });
+
+    const overlay = modalRoot.querySelector(".js-modal-overlay");
+    const cancel = modalRoot.querySelector(".js-modal-cancel");
+    const confirm = modalRoot.querySelector(".js-modal-confirm");
+
+    state.modalKeyHandler = (event) => {
+      if (event.key === "Escape") closeSendModal();
+    };
+    document.addEventListener("keydown", state.modalKeyHandler);
+
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) closeSendModal();
+    });
+    cancel.addEventListener("click", closeSendModal);
+    confirm.addEventListener("click", () => {
+      closeSendModal();
+      persist(data);
+    });
+
+    cancel.focus();
+  }
+
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     clearErrors(root);
@@ -198,6 +319,9 @@ export async function render(root, { id } = {}) {
         role: input.authorRole.value.trim(),
       },
       body: parseBody(input.body.value),
+      targetGroups: [
+        ...form.querySelectorAll('input[name="target-groups"]:checked'),
+      ].map((el) => el.value),
     };
 
     let firstInvalid = null;
@@ -219,33 +343,12 @@ export async function render(root, { id } = {}) {
       return;
     }
 
-    submit.disabled = true;
-    submit.classList.add("is-loading");
-    submit.innerHTML = spinnerHTML(editing ? "Salvando…" : "Publicando…");
-
-    /* Pequeno delay — mantém o estado de loading perceptível. */
-    setTimeout(async () => {
-      try {
-        if (editing) {
-          await updatePost(id, data);
-        } else {
-          await createPost(data);
-        }
-        showToast(
-          editing
-            ? "Comunicado atualizado com sucesso"
-            : "Comunicado publicado com sucesso"
-        );
-        location.hash = "#/posts";
-      } catch (err) {
-        submit.disabled = false;
-        submit.classList.remove("is-loading");
-        submit.innerHTML =
-          "<span>" +
-          (editing ? "Salvar alterações" : "Publicar comunicado") +
-          "</span>";
-        showToast("Erro ao salvar: " + err.message);
-      }
-    }, 600);
+    if (editing) {
+      /* Alvo imutável — PUT rejeita targetGroups com 400. */
+      delete data.targetGroups;
+      persist(data);
+    } else {
+      openSendConfirmModal(data);
+    }
   });
 }

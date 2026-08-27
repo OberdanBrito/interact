@@ -6,6 +6,8 @@ import { showToast } from "../ui/toast.js";
 import * as loginView from "../features/auth/login-view.js";
 import * as postsListView from "../features/posts/list-view.js";
 import * as postFormView from "../features/posts/form-view.js";
+import * as groupsListView from "../features/groups/list-view.js";
+import * as groupFormView from "../features/groups/form-view.js";
 
 function parseRoute() {
   const parts = location.hash.replace(/^#/, "").split("/").filter(Boolean);
@@ -16,21 +18,44 @@ function parseRoute() {
     return { name: "post-new" };
   if (parts[0] === "posts" && parts.length === 3 && parts[2] === "editar")
     return { name: "post-edit", id: parts[1] };
+  if (parts[0] === "groups" && parts.length === 1) return { name: "groups" };
+  if (parts[0] === "groups" && parts[1] === "nova" && parts.length === 2)
+    return { name: "group-new" };
+  if (parts[0] === "groups" && parts.length === 3 && parts[2] === "editar")
+    return { name: "group-edit", id: parts[1] };
   return { name: "not-found" };
 }
 
 const AUTH_ROUTES = {
   posts: {
     title: "Comunicados",
+    active: "posts",
     render: (view) => postsListView.render(view),
   },
   "post-new": {
     title: "Nova publicação",
+    active: "posts",
     render: (view) => postFormView.render(view),
   },
   "post-edit": {
     title: "Editar publicação",
+    active: "posts",
     render: (view, route) => postFormView.render(view, { id: route.id }),
+  },
+  groups: {
+    title: "Grupos",
+    active: "groups",
+    render: (view) => groupsListView.render(view),
+  },
+  "group-new": {
+    title: "Novo grupo",
+    active: "groups",
+    render: (view) => groupFormView.render(view),
+  },
+  "group-edit": {
+    title: "Editar grupo",
+    active: "groups",
+    render: (view, route) => groupFormView.render(view, { id: route.id }),
   },
 };
 
@@ -64,7 +89,7 @@ function renderRoute() {
   app.innerHTML = shellHTML({
     user: state.user,
     sectionTitle: config.title,
-    active: "posts",
+    active: config.active,
   });
   $(".js-logout").addEventListener("click", () => {
     logout();

@@ -31,6 +31,8 @@ const comunicadoSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    targetGroups: { type: [String], default: [] },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     author: {
       name: { type: String, default: null },
       role: { type: String, default: null },

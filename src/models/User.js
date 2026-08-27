@@ -19,6 +19,7 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
     },
+    groupIds: { type: [String], default: [] },
   },
   { timestamps: true }
 );

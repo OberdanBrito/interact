@@ -1,6 +1,9 @@
+import mongoose from "mongoose";
 import { Router } from "express";
 import Comunicado from "../models/Comunicado.js";
+import Group from "../models/Group.js";
 import auth from "../middleware/auth.js";
+import requireAdmin from "../middleware/requireAdmin.js";
 
 const router = Router();
 
@@ -8,7 +11,20 @@ const router = Router();
 router.use(auth);
 
 // Adapta formato para espelhar o schema do frontend
-function toPost(doc) {
+async function toPost(doc) {
+  const targetGroups = doc.targetGroups ?? [];
+
+  // Resolve nomes dos grupos-alvo na mesma ordem de targetGroups
+  // (inclui grupos inativos — comunicados antigos continuam mostrando nomes)
+  let targetGroupNames = [];
+  if (targetGroups.length > 0) {
+    const groups = await Group.find({ _id: { $in: targetGroups } })
+      .select("name")
+      .lean();
+    const nameById = new Map(groups.map((g) => [String(g._id), g.name]));
+    targetGroupNames = targetGroups.map((id) => nameById.get(String(id)) ?? null);
+  }
+
   return {
     id: doc._id,
     readMode: doc.readMode,
@@ -22,6 +38,9 @@ function toPost(doc) {
       role: doc.author?.role ?? null,
     },
     dateISO: doc.dateISO ? new Date(doc.dateISO).toISOString() : null,
+    targetGroups,
+    createdBy: doc.createdBy ? String(doc.createdBy) : null,
+    targetGroupNames,
   };
 }
 
@@ -30,12 +49,13 @@ function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// GET /api/posts — lista todos. Query params: ?category, ?search
+// GET /api/posts — lista todos. Query params: ?category, ?search, ?groupId
 router.get("/", async (req, res) => {
   try {
-    const { category, search } = req.query;
+    const { category, search, groupId } = req.query;
 
     const filter = {};
+    const and = [];
 
     if (category && category !== "todas") {
       filter.categoryId = category;
@@ -43,12 +63,38 @@ router.get("/", async (req, res) => {
 
     if (search) {
       const rx = new RegExp(escapeRegExp(search), "i");
-      filter.$or = [{ title: rx }, { "author.name": rx }];
+      and.push({ $or: [{ title: rx }, { "author.name": rx }] });
+    }
+
+    // Visibilidade por grupo (feature segmentação)
+    if (groupId) {
+      if (req.user.role !== "admin" && !req.user.groupIds.includes(groupId)) {
+        return res.status(403).json({ error: "Você não pertence a este grupo" });
+      }
+      if (req.user.role === "admin") {
+        filter.createdBy = req.user.id; // admin vê só o que publicou
+      }
+      and.push({
+        $or: [{ targetGroups: { $size: 0 } }, { targetGroups: groupId }],
+      });
+    } else if (req.user.role === "admin") {
+      filter.createdBy = req.user.id; // admin vê só o que publicou
+    } else {
+      and.push({
+        $or: [
+          { targetGroups: { $size: 0 } }, // broadcast
+          { targetGroups: { $in: req.user.groupIds } }, // direcionado aos grupos do usuário
+        ],
+      });
+    }
+
+    if (and.length > 0) {
+      filter.$and = and;
     }
 
     const docs = await Comunicado.find(filter).sort({ dateISO: -1 }).lean();
 
-    res.json(docs.map(toPost));
+    res.json(await Promise.all(docs.map(toPost)));
   } catch (err) {
     console.error("Erro ao listar comunicados:", err.message);
     res.status(500).json({ error: "Erro interno no servidor" });
@@ -64,21 +110,60 @@ router.get("/:id", async (req, res) => {
       return res.status(404).json({ error: "Comunicado não encontrado" });
     }
 
-    res.json(toPost(doc));
+    // Visibilidade: não elegível → 404 (não revela existência)
+    const targetGroups = doc.targetGroups ?? [];
+    const eligible =
+      req.user.role === "admin"
+        ? String(doc.createdBy) === String(req.user.id)
+        : targetGroups.length === 0 ||
+          targetGroups.some((g) => req.user.groupIds.includes(g));
+
+    if (!eligible) {
+      return res.status(404).json({ error: "Comunicado não encontrado" });
+    }
+
+    res.json(await toPost(doc));
   } catch (err) {
     console.error("Erro ao buscar comunicado:", err.message);
     res.status(500).json({ error: "Erro interno no servidor" });
   }
 });
 
-// POST /api/posts — cria comunicado
-router.post("/", async (req, res) => {
-  const { readMode, categoryId, urgent, title, body, author } = req.body;
+// POST /api/posts — cria comunicado (somente admin)
+router.post("/", requireAdmin, async (req, res) => {
+  const { readMode, categoryId, urgent, title, body, author, targetGroups } =
+    req.body;
 
   if (!title || !categoryId) {
     return res
       .status(400)
       .json({ error: "Título e categoria são obrigatórios" });
+  }
+
+  // Valida targetGroups: array de strings (ids de grupo)
+  let groups = [];
+  if (targetGroups !== undefined) {
+    if (
+      !Array.isArray(targetGroups) ||
+      !targetGroups.every(
+        (g) => typeof g === "string" && mongoose.isValidObjectId(g)
+      )
+    ) {
+      return res.status(400).json({ error: "Grupo-alvo inválido ou inativo" });
+    }
+    if (targetGroups.length > 0) {
+      // Todos os grupos devem existir e estar ativos
+      const found = await Group.find({
+        _id: { $in: targetGroups },
+        active: true,
+      }).lean();
+      if (found.length !== new Set(targetGroups).size) {
+        return res
+          .status(400)
+          .json({ error: "Grupo-alvo inválido ou inativo" });
+      }
+    }
+    groups = targetGroups;
   }
 
   try {
@@ -103,19 +188,29 @@ router.post("/", async (req, res) => {
         name: author?.name || null,
         role: author?.role || null,
       },
+      targetGroups: groups,
+      createdBy: req.user.id, // sempre do token, nunca do body
       dateISO: new Date(),
     });
 
-    res.status(201).json(toPost(doc));
+    res.status(201).json(await toPost(doc));
   } catch (err) {
     console.error("Erro ao criar comunicado:", err.message);
     res.status(500).json({ error: "Erro interno no servidor" });
   }
 });
 
-// PUT /api/posts/:id — edita comunicado (body parcial)
-router.put("/:id", async (req, res) => {
-  const { readMode, categoryId, urgent, title, body, author } = req.body;
+// PUT /api/posts/:id — edita comunicado (somente admin, body parcial)
+router.put("/:id", requireAdmin, async (req, res) => {
+  const { readMode, categoryId, urgent, title, body, author, targetGroups } =
+    req.body;
+
+  // Alvo é imutável após publicação
+  if (targetGroups !== undefined) {
+    return res
+      .status(400)
+      .json({ error: "Alvo não pode ser alterado após publicação" });
+  }
 
   try {
     const doc = await Comunicado.findById(req.params.id);
@@ -125,6 +220,7 @@ router.put("/:id", async (req, res) => {
     }
 
     // Update parcial — só altera campos presentes (equivalente ao COALESCE)
+    // createdBy é imutável: nunca vem do body
     if (readMode) doc.readMode = readMode;
     if (categoryId) doc.categoryId = categoryId;
     if (urgent !== undefined && urgent !== null) doc.urgent = urgent;
@@ -135,15 +231,15 @@ router.put("/:id", async (req, res) => {
 
     await doc.save();
 
-    res.json(toPost(doc));
+    res.json(await toPost(doc));
   } catch (err) {
     console.error("Erro ao editar comunicado:", err.message);
     res.status(500).json({ error: "Erro interno no servidor" });
   }
 });
 
-// DELETE /api/posts/:id — exclui comunicado
-router.delete("/:id", async (req, res) => {
+// DELETE /api/posts/:id — exclui comunicado (somente admin)
+router.delete("/:id", requireAdmin, async (req, res) => {
   try {
     const deleted = await Comunicado.findByIdAndDelete(req.params.id);
 

@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import connectDB from "./connection.js";
 import User from "../models/User.js";
 import Comunicado from "../models/Comunicado.js";
+import Group from "../models/Group.js";
 
 const SEED_POSTS = [
   {
@@ -169,11 +170,12 @@ async function seed() {
     // Apaga coleções antes de popular (reset completo)
     await User.deleteMany({});
     await Comunicado.deleteMany({});
+    await Group.deleteMany({});
     console.log("✔ Coleções limpas");
 
     // Insere admin
     const hash = bcrypt.hashSync("senha123", 10);
-    await User.create({
+    const admin = await User.create({
       email: "admin@interactcorp.com.br",
       password_hash: hash,
       name: "Administrador",
@@ -181,9 +183,83 @@ async function seed() {
     });
     console.log("✔ Usuário admin inserido");
 
+    const [gOperacoes, gLogistica, gTi] = await Group.create([
+      { name: "operacoes", active: true },
+      { name: "logistica", active: true },
+      { name: "ti", active: true },
+    ]);
+    const idOperacoes = String(gOperacoes._id);
+    const idLogistica = String(gLogistica._id);
+    const idTi = String(gTi._id);
+    console.log("✔ 3 grupos inseridos");
+
+    await User.create([
+      {
+        email: "colaborador.operacoes@interactcorp.com.br",
+        password_hash: bcrypt.hashSync("senha123", 10),
+        name: "Colaborador Operações",
+        role: "colaborador",
+        groupIds: [idOperacoes],
+      },
+      {
+        email: "colaborador.multi@interactcorp.com.br",
+        password_hash: bcrypt.hashSync("senha123", 10),
+        name: "Colaborador Multi",
+        role: "colaborador",
+        groupIds: [idOperacoes, idTi],
+      },
+      {
+        email: "colaborador.semgrupo@interactcorp.com.br",
+        password_hash: bcrypt.hashSync("senha123", 10),
+        name: "Colaborador Sem Grupo",
+        role: "colaborador",
+        groupIds: [],
+      },
+    ]);
+    console.log("✔ 3 colaboradores inseridos");
+
+    // Posts p01-p10 recebem createdBy do admin (admin vê só o que publicou)
+    const posts = SEED_POSTS.map((p) => ({ ...p, createdBy: admin._id }));
+
+    posts.push(
+      {
+        _id: "p11",
+        readMode: "ack",
+        categoryId: "rh",
+        urgent: false,
+        likeBase: 11,
+        title: "Regra de home office para Operações",
+        body: [
+          "A partir do próximo mês, a equipe de Operações passa a ter direito a dois dias de home office por semana, mediante alinhamento prévio com o gestor imediato.",
+          "Os dias remotos devem ser registrados no sistema de ponto até a sexta-feira da semana anterior, e a presença presencial segue obrigatória nas reuniões de escala às segundas-feiras.",
+          "Dúvidas sobre a nova regra podem ser encaminhadas ao Departamento Pessoal.",
+        ],
+        targetGroups: [idOperacoes],
+        createdBy: admin._id,
+        author: { name: "Departamento Pessoal", role: "DP" },
+        dateISO: daysAgo(2),
+      },
+      {
+        _id: "p12",
+        readMode: "auto",
+        categoryId: "ti",
+        urgent: false,
+        likeBase: 5,
+        title: "Treinamento de segurança para Operações e Logística",
+        body: [
+          "As equipes de Operações e Logística terão um treinamento específico de segurança da informação focado no uso dos terminais de coleta de dados e tablets de campo.",
+          "O treinamento será presencial, no auditório da sede, com turmas de 20 pessoas. A escala de horários será divulgada pelos gestores de cada equipe.",
+        ],
+        targetGroups: [idOperacoes, idLogistica],
+        createdBy: admin._id,
+        author: { name: "Rafael Nunes", role: "Coordenador de TI" },
+        dateISO: daysAgo(1),
+      }
+    );
+
     // Insere comunicados
-    await Comunicado.insertMany(SEED_POSTS);
-    console.log(`✔ ${SEED_POSTS.length} comunicados inseridos`);
+    await Comunicado.insertMany(posts);
+    console.log(`✔ ${posts.length} comunicados inseridos`);
     console.log("✔ Seed concluído com sucesso");
   } catch (err) {
     console.error("✖ Erro durante seed:", err.message);

@@ -2,6 +2,7 @@ export const STORAGE_KEYS = {
   session: "interact.session",
   dismissInstall: "interact.installDismissed",
   userPrefix: "interact.user.",
+  lastGroup: "interact.lastGroup",
 };
 
 export const REDUCED_MOTION = window.matchMedia(

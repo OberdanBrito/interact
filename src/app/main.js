@@ -1,7 +1,7 @@
 import { state } from "../core/state.js";
 import { $, initialsOf } from "../core/utils.js";
 import { restoreSession, login, logout, getCurrentUser } from "../features/auth/session.js";
-import { renderChips, renderFeed, resetFilter } from "../features/feed/feed.js";
+import { renderChips, renderEnvSelector, renderFeed, resetActiveGroup, resetFilter } from "../features/feed/feed.js";
 import {
   bindActionContainer,
   toggleLike,
@@ -22,6 +22,7 @@ function showView(view) {
 }
 
 function enterFeed() {
+  renderEnvSelector();
   renderChips();
   renderFeed();
   const user = getCurrentUser();
@@ -92,6 +93,7 @@ async function handleLogin(event) {
 function handleLogout() {
   logout();
   resetFilter();
+  resetActiveGroup();
   closeSheet(true);
   hideToast();
   showView("login");

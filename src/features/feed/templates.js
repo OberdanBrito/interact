@@ -29,6 +29,7 @@ export function postCardHTML(post, { liked, read }) {
         <span class="unread-dot" ${read ? "hidden" : ""} aria-hidden="true"></span>
         <span class="badge" data-cat="${post.categoryId}">${getCategoryLabel(post.categoryId)}</span>
         ${post.urgent ? '<span class="badge badge-urgent">Urgente</span>' : ""}
+        ${post.targetGroups?.length ? '<span class="badge badge-targeted">Direcionado</span>' : ""}
         <time class="post-time">${relativeDate(post.dateISO)}</time>
       </div>
       <button type="button" class="js-open-post"

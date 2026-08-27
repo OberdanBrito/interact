@@ -157,6 +157,8 @@ h1, h2, p { margin: 0; }
 
 .badge-urgent { color: var(--danger); background: var(--danger-bg); }
 
+.badge-targeted { color: var(--navy-700); background: var(--navy-100); }
+
 .spinner {
   width: 20px;
   height: 20px;
@@ -314,6 +316,23 @@ h1, h2, p { margin: 0; }
 .chips {
   background: var(--bg);
   border-bottom: 1px solid var(--border);
+}
+
+.env-selector {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px 0;
+  background: var(--bg);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.env-selector::-webkit-scrollbar { display: none; }
+.env-selector .chip {
+  height: 30px;
+  padding: 0 12px;
+  font-size: var(--fs-label);
+  letter-spacing: .03em;
+  text-transform: uppercase;
 }
 .chips-scroll {
   display: flex;
@@ -568,6 +587,35 @@ h1, h2, p { margin: 0; }
 .sheet-text { padding-top: 14px; }
 .sheet-text p { margin-bottom: 12px; }
 .sheet-text p:last-child { margin-bottom: 0; }
+
+.sheet-transparency {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-meta);
+  color: var(--text-secondary);
+}
+.sheet-transparency summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.sheet-transparency summary::-webkit-details-marker { display: none; }
+.sheet-transparency summary::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border: solid currentColor;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(-45deg);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.sheet-transparency details[open] summary::before { transform: rotate(45deg); }
+.sheet-transparency details p { margin-top: 8px; }
 
 .sheet-actions {
   display: flex;

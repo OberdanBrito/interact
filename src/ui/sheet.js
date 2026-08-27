@@ -39,6 +39,25 @@ export function openSheet(postId) {
     .map((paragraph) => `<p>${escapeHTML(paragraph)}</p>`)
     .join("");
 
+  const transparency = $("#sheet-transparency");
+  const isTargeted = (post.targetGroups?.length ?? 0) > 0;
+  let transparencyText;
+  if (isTargeted) {
+    const targets = (post.targetGroupNames || []).join(", ");
+    const userGroupNames = (state.user?.groups || [])
+      .map((group) => group.name)
+      .join(", ");
+    transparencyText = `Direcionado a: ${targets}. Você está vendo porque está cadastrado nos grupos: ${userGroupNames}.`;
+  } else {
+    transparencyText = "Enviado a todos os colaboradores.";
+  }
+  transparency.innerHTML = `
+    <details>
+      <summary>Por que estou vendo esta mensagem?</summary>
+      <p>${escapeHTML(transparencyText)}</p>
+    </details>`;
+  transparency.hidden = false;
+
   const actions = $("#sheet-actions");
   actions.dataset.postId = postId;
   actions.innerHTML = currentActionsHTML(post);

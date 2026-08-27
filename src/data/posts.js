@@ -1,6 +1,8 @@
 /* Camada de dados conectada ao backend real (Express + MongoDB).
    Categorias permanecem estáticas; posts e autenticação vêm da API. */
 
+import { state } from "../core/state.js";
+
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3002";
 
 export const CATEGORIES = [
@@ -30,13 +32,23 @@ export async function login(email, password) {
   }
   const data = await res.json();
   TOKEN = data.token;
-  return { email: data.user.email, name: data.user.name, token: data.token };
+  return {
+    email: data.user.email,
+    name: data.user.name,
+    token: data.token,
+    groupIds: data.user.groupIds || [],
+    groups: data.user.groups || [],
+  };
 }
 
-export async function getPosts() {
+export async function getPosts(groupId) {
   if (!TOKEN) return [];
   try {
-    const res = await fetch(`${API_BASE}/api/posts`, {
+    const url =
+      groupId && groupId !== "todas"
+        ? `${API_BASE}/api/posts?groupId=${encodeURIComponent(groupId)}`
+        : `${API_BASE}/api/posts`;
+    const res = await fetch(url, {
       headers: { Authorization: `Bearer ${TOKEN}` },
     });
     if (!res.ok) return [];
@@ -46,6 +58,10 @@ export async function getPosts() {
   } catch {
     return []; // offline ou rede indisponível: feed vazio gracioso
   }
+}
+
+export function getUserGroups() {
+  return state.user?.groups || [];
 }
 
 export function getPostById(id) {

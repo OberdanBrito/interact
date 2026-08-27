@@ -79,11 +79,13 @@ try {
     feedState.dots === feedState.cards,
     `dots=${feedState.dots}/${feedState.cards}`
   );
-  check(
-    "2 botões de ack (p02/p05)",
-    feedState.readBtns === 2,
-    `btns=${feedState.readBtns}`
-  );
+  const ackPosts = await page.evaluate(() => {
+    const ids = ["p02", "p05", "p11"];
+    return ids.filter((id) =>
+      document.querySelector(`.post-card[data-post-id="${id}"] .js-read`)
+    ).length;
+  });
+  check("3 botões de ack (p02/p05/p11)", ackPosts === 3, `ack=${ackPosts}`);
   check(
     "iniciais do usuário no avatar",
     feedState.initials === feedState.expectedInitials,

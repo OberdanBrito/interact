@@ -1,15 +1,70 @@
 import { state } from "../../core/state.js";
-import { $ } from "../../core/utils.js";
-import { getCategories, getPosts } from "../../data/posts.js";
+import { $, STORAGE_KEYS, storageGet, storageSet } from "../../core/utils.js";
+import { getCategories, getPosts, getUserGroups } from "../../data/posts.js";
 import { getUserData } from "../auth/session.js";
 import { postCardHTML } from "./templates.js";
+
+const ALL_GROUPS_ID = "todas";
 
 export function resetFilter() {
   state.filter = "todas";
 }
 
+export function resetActiveGroup() {
+  state.activeGroupId = ALL_GROUPS_ID;
+  try {
+    localStorage.removeItem(STORAGE_KEYS.lastGroup);
+  } catch {
+    /* armazenamento indisponível */
+  }
+}
+
+function restoreActiveGroup() {
+  const groups = getUserGroups();
+  const saved = storageGet(STORAGE_KEYS.lastGroup, ALL_GROUPS_ID);
+  state.activeGroupId =
+    saved !== ALL_GROUPS_ID && groups.some((group) => group.id === saved)
+      ? saved
+      : ALL_GROUPS_ID;
+}
+
+export function renderEnvSelector() {
+  const container = $("#env-selector");
+  const groups = getUserGroups();
+  restoreActiveGroup();
+
+  if (groups.length === 0) {
+    container.innerHTML = "";
+    container.hidden = true;
+    return;
+  }
+
+  container.hidden = false;
+  container.innerHTML = "";
+  const options = [{ id: ALL_GROUPS_ID, name: "Todas" }, ...groups];
+  for (const option of options) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip";
+    chip.textContent = option.name;
+    chip.dataset.groupId = option.id;
+    chip.setAttribute(
+      "aria-pressed",
+      String(state.activeGroupId === option.id)
+    );
+    chip.addEventListener("click", () => {
+      if (state.activeGroupId === option.id) return;
+      state.activeGroupId = option.id;
+      storageSet(STORAGE_KEYS.lastGroup, option.id);
+      renderEnvSelector();
+      renderFeed();
+    });
+    container.appendChild(chip);
+  }
+}
+
 async function visiblePosts() {
-  const posts = await getPosts();
+  const posts = await getPosts(state.activeGroupId);
   if (state.filter === "todas") return posts;
   return posts.filter((post) => post.categoryId === state.filter);
 }

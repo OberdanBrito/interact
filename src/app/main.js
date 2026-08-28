@@ -1,6 +1,6 @@
 import { state } from "../core/state.js";
 import { $, initialsOf } from "../core/utils.js";
-import { restoreSession, login, logout, getCurrentUser } from "../features/auth/session.js";
+import { restoreSession, login, logout, getCurrentUser, restoreInteractions } from "../features/auth/session.js";
 import { renderChips, renderEnvSelector, renderFeed, resetActiveGroup, resetFilter } from "../features/feed/feed.js";
 import {
   bindActionContainer,
@@ -15,6 +15,7 @@ import {
 import { handleSheetScroll } from "../features/feed/autoread.js";
 import { hideToast } from "../ui/toast.js";
 import { initPWA } from "../features/install/pwa.js";
+import { syncNow } from "../data/sync.js";
 
 function showView(view) {
   $("#view-login").hidden = view !== "login";
@@ -120,8 +121,12 @@ function init() {
 
   initPWA();
 
-  if (restoreSession()) enterFeed();
-  else showView("login");
+  window.addEventListener("online", syncNow);
+
+  if (restoreSession()) {
+    restoreInteractions().then(renderFeed);
+    enterFeed();
+  } else showView("login");
 }
 
 init();

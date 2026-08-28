@@ -3,6 +3,7 @@ export const STORAGE_KEYS = {
   dismissInstall: "interact.installDismissed",
   userPrefix: "interact.user.",
   lastGroup: "interact.lastGroup",
+  syncQueue: "interact.syncQueue",
 };
 
 export const REDUCED_MOTION = window.matchMedia(

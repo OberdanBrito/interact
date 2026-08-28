@@ -21,6 +21,10 @@ export function setToken(token) {
   TOKEN = token || null;
 }
 
+export function getToken() {
+  return TOKEN;
+}
+
 export async function login(email, password) {
   const res = await fetch(`${API_BASE}/api/auth/login`, {
     method: "POST",
@@ -75,4 +79,39 @@ export function getCategories() {
 export function getCategoryLabel(categoryId) {
   const cat = CATEGORIES.find((c) => c.id === categoryId);
   return cat ? cat.label : categoryId;
+}
+
+/* --- Interações (bidirecional) ---------------------------------------- */
+
+// Envia o estado do usuário para um comunicado ao backend.
+// Retorna true em sucesso; false em falha de rede/API (fica na fila offline).
+export async function syncInteraction(postId, { liked, read } = {}) {
+  if (!TOKEN) return false;
+  try {
+    const res = await fetch(`${API_BASE}/api/interactions/${postId}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ liked, read }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Busca o estado consolidado do usuário (likes/leituras) em todos os posts.
+// Usado para restaurar o estado num novo dispositivo.
+export async function fetchMyInteractions() {
+  if (!TOKEN) return {};
+  try {
+    const res = await fetch(`${API_BASE}/api/interactions/me`, {
+      headers: { Authorization: `Bearer ${TOKEN}` },
+    });
+    return res.ok ? await res.json() : {};
+  } catch {
+    return {};
+  }
 }

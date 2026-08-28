@@ -1,6 +1,7 @@
 import { state } from "../../core/state.js";
 import { STORAGE_KEYS, storageGet, storageSet } from "../../core/utils.js";
-import { login as apiLogin, setToken } from "../../data/posts.js";
+import { login as apiLogin, setToken, fetchMyInteractions } from "../../data/posts.js";
+import { enqueue, syncNow } from "../../data/sync.js";
 
 export function getCurrentUser() {
   return state.user;
@@ -33,7 +34,28 @@ export async function login(email, password) {
   state.user = user;
   loadUserData(user.email);
   storageSet(STORAGE_KEYS.session, user);
+  await restoreInteractions();
   return user;
+}
+
+// Mescla o estado do servidor com o localStorage (união de likes/leituras).
+export async function restoreInteractions() {
+  if (!state.user) return;
+  const server = await fetchMyInteractions();
+  if (!server) return;
+  const serverLikes = [];
+  const serverRead = [];
+  for (const [postId, st] of Object.entries(server)) {
+    if (st.liked) serverLikes.push(postId);
+    if (st.read) serverRead.push(postId);
+  }
+  state.userData.likes = Array.from(
+    new Set([...state.userData.likes, ...serverLikes])
+  );
+  state.userData.read = Array.from(
+    new Set([...state.userData.read, ...serverRead])
+  );
+  storageSet(STORAGE_KEYS.userPrefix + state.user.email, state.userData);
 }
 
 export function logout() {
@@ -56,6 +78,8 @@ export function toggleLikePersist(postId) {
   if (nowLiked) state.userData.likes.push(postId);
   else state.userData.likes.splice(likedIndex, 1);
   storageSet(STORAGE_KEYS.userPrefix + state.user.email, state.userData);
+  enqueue(postId, { liked: nowLiked });
+  syncNow();
   return nowLiked;
 }
 
@@ -64,6 +88,8 @@ export function markReadPersist(postId) {
   if (wasUnread) {
     state.userData.read.push(postId);
     storageSet(STORAGE_KEYS.userPrefix + state.user.email, state.userData);
+    enqueue(postId, { read: true });
+    syncNow();
   }
   return wasUnread;
 }

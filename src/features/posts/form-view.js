@@ -1,4 +1,4 @@
-import { CATEGORIES, getPost, createPost, updatePost } from "../../data/posts.js";
+import { CATEGORIES, getPost, createPost, updatePost, getInteractionAggregate } from "../../data/posts.js";
 import { listGroups, getRecipientCount } from "../../data/groups.js";
 import { state } from "../../core/state.js";
 import { $, escapeHTML } from "../../core/utils.js";
@@ -77,6 +77,28 @@ export async function render(root, { id } = {}) {
   };
   const selectedGroups = values.targetGroups || [];
 
+  let metricsHTML = "";
+  if (editing) {
+    const agg = await getInteractionAggregate(id);
+    if (agg) {
+      const byGroup = (agg.byGroup || [])
+        .map(
+          (g) =>
+            `<span class="metric-group">${escapeHTML(g.name)}: ${g.reads} liram · ${g.likes} curtiram</span>`
+        )
+        .join("");
+      metricsHTML = `
+        <div class="card metrics-card" id="post-metrics">
+          <h2 class="metrics-title">Métricas de leitura</h2>
+          <div class="metrics-summary">
+            <span class="metric-total"><strong>${agg.totalReads}</strong> leituras</span>
+            <span class="metric-total"><strong>${agg.totalLikes}</strong> curtidas</span>
+          </div>
+          ${byGroup ? `<div class="metrics-groups">${byGroup}</div>` : ""}
+        </div>`;
+    }
+  }
+
   /* Alvo imutável após publicação — em edição, exibe também grupos-alvo já desativados. */
   const groups = (await listGroups()).filter(
     (group) => group.active || (editing && selectedGroups.includes(group.id))
@@ -87,6 +109,8 @@ export async function render(root, { id } = {}) {
       <svg width="16" height="16" aria-hidden="true" focusable="false"><use href="#i-arrow-left"/></svg>
       Voltar para a lista
     </a>
+
+    ${metricsHTML}
 
     <form class="card form-card" id="post-form" novalidate>
       <div class="field">

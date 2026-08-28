@@ -941,6 +941,95 @@ tbody tr:hover {
   max-width: 760px;
 }
 
+.metrics-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px 28px;
+  max-width: 760px;
+  border-left: 4px solid var(--navy-700);
+}
+
+.metrics-title {
+  margin: 0;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.metrics-summary {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.metric-total strong {
+  color: var(--navy-900);
+}
+
+.metrics-groups {
+  display: flex;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  font-size: var(--fs-body);
+  color: var(--text-secondary);
+}
+
+.analytics-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 28px 32px;
+  max-width: 860px;
+}
+
+.analytics-head-info h2 {
+  margin: 0 0 8px;
+  font-size: var(--fs-title);
+}
+
+.analytics-head-info .cell-excerpt {
+  max-width: 520px;
+}
+
+.analytics-target {
+  margin: 10px 0 0;
+  font-size: var(--fs-body);
+  color: var(--text-secondary);
+}
+
+.cell-title-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.cell-title-link:hover .cell-title-text {
+  color: var(--navy-700);
+}
+
+.cell-stats {
+  white-space: nowrap;
+}
+
+.metric-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-right: 16px;
+  color: var(--text-secondary);
+  font-size: var(--fs-body);
+}
+
+.metric-stat strong {
+  color: var(--navy-900);
+}
+
+
+
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -29,6 +29,11 @@ export function shellHTML({ user, sectionTitle, active }) {
             ${icon("i-users")}
             <span>Grupos</span>
           </a>
+          <a class="nav-item ${active === "analytics" ? "is-active" : ""}" href="#/analytics"
+             ${active === "analytics" ? 'aria-current="page"' : ""}>
+            ${icon("i-inbox")}
+            <span>Leituras</span>
+          </a>
         </nav>
         <div class="sidebar-cta">
           <a class="btn btn-primary btn-block" href="#/posts/nova">

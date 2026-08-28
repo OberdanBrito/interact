@@ -8,6 +8,8 @@ import * as postsListView from "../features/posts/list-view.js";
 import * as postFormView from "../features/posts/form-view.js";
 import * as groupsListView from "../features/groups/list-view.js";
 import * as groupFormView from "../features/groups/form-view.js";
+import * as analyticsListView from "../features/analytics/list-view.js";
+import * as analyticsDetailView from "../features/analytics/detail-view.js";
 
 function parseRoute() {
   const parts = location.hash.replace(/^#/, "").split("/").filter(Boolean);
@@ -23,6 +25,9 @@ function parseRoute() {
     return { name: "group-new" };
   if (parts[0] === "groups" && parts.length === 3 && parts[2] === "editar")
     return { name: "group-edit", id: parts[1] };
+  if (parts[0] === "analytics" && parts.length === 1) return { name: "analytics" };
+  if (parts[0] === "analytics" && parts.length === 2)
+    return { name: "analytics-detail", id: parts[1] };
   return { name: "not-found" };
 }
 
@@ -56,6 +61,19 @@ const AUTH_ROUTES = {
     title: "Editar grupo",
     active: "groups",
     render: (view, route) => groupFormView.render(view, { id: route.id }),
+  },
+  analytics: {
+    title: "Leituras",
+    active: "analytics",
+    render: (view) => analyticsListView.render(view),
+  },
+  "analytics-detail": {
+    title: "Detalhes de leitura",
+    active: "analytics",
+    render: (view, route) => {
+      analyticsDetailView.resetGroupFilter();
+      analyticsDetailView.render(view, { id: route.id });
+    },
   },
 };
 

@@ -96,3 +96,29 @@ export function getCategoryLabel(categoryId) {
   const cat = CATEGORIES.find((c) => c.id === categoryId);
   return cat ? cat.label : categoryId;
 }
+
+export async function getInteractionAggregate(postId) {
+  if (!TOKEN) return null;
+  const res = await fetch(
+    `${API_BASE}/api/interactions?postId=${encodeURIComponent(postId)}`,
+    { headers: { Authorization: `Bearer ${TOKEN}` } }
+  );
+  return res.ok ? await res.json() : null;
+}
+
+export async function getInteractionsSummary() {
+  if (!TOKEN) return {};
+  const res = await fetch(`${API_BASE}/api/interactions/summary`, {
+    headers: { Authorization: `Bearer ${TOKEN}` },
+  });
+  return res.ok ? await res.json() : {};
+}
+
+export async function getInteractionMembers(postId) {
+  if (!TOKEN) return [];
+  const res = await fetch(
+    `${API_BASE}/api/interactions/members?postId=${encodeURIComponent(postId)}`,
+    { headers: { Authorization: `Bearer ${TOKEN}` } }
+  );
+  return res.ok ? await res.json() : [];
+}

@@ -241,17 +241,17 @@ try {
   });
   check("manifest injetado e acessível", manifestOk === true);
 
-  // 9. Offline
+  // 9. Offline — feed deve carregar do cache do IndexedDB (posts da última sincronização)
   await context.setOffline(true);
   await page.reload({ waitUntil: "load" }).catch(() => {});
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(1500);
   const offline = await page.evaluate(() => ({
     feed: !document.querySelector("#view-feed").hidden,
     cards: document.querySelectorAll(".post-card").length,
   }));
   check(
-    "offline: app carrega do precache",
-    offline.feed && offline.cards === 0,
+    "offline: app carrega do precache e mostra posts cacheados",
+    offline.feed && offline.cards > 0,
     `cards=${offline.cards}`
   );
   await context.setOffline(false);

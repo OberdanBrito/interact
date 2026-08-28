@@ -2,6 +2,7 @@
    Categorias permanecem estáticas; posts e autenticação vêm da API. */
 
 import { state } from "../core/state.js";
+import { cachePosts, getCachedPosts, getCachedPost } from "./cache.js";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3002";
 
@@ -39,6 +40,7 @@ export async function login(email, password) {
   return {
     email: data.user.email,
     name: data.user.name,
+    role: data.user.role,
     token: data.token,
     groupIds: data.user.groupIds || [],
     groups: data.user.groups || [],
@@ -58,10 +60,33 @@ export async function getPosts(groupId) {
     if (!res.ok) return [];
     const posts = await res.json();
     CACHE = posts;
+    cachePosts(posts); // persiste no IndexedDB para leitura offline
     return posts;
   } catch {
-    return []; // offline ou rede indisponível: feed vazio gracioso
+    // offline ou rede indisponível: cai para o cache do IndexedDB
+    return filterCachedByGroup(groupId);
   }
+}
+
+// Filtra os posts cacheados replicando a regra de visibilidade do backend:
+// broadcast (targetGroups vazio) sempre visível; direcionado só se incluir
+// um dos grupos do usuário (ou o grupo específico solicitado).
+async function filterCachedByGroup(groupId) {
+  const cached = await getCachedPosts();
+  if (cached.length === 0) return [];
+  if (state.user?.role === "admin") {
+    CACHE = cached;
+    return cached;
+  }
+  const myGroupIds = state.user?.groupIds || [];
+  const visible = cached.filter((post) => {
+    const targets = post.targetGroups || [];
+    if (targets.length === 0) return true; // broadcast
+    if (groupId && groupId !== "todas") return targets.includes(groupId);
+    return targets.some((g) => myGroupIds.includes(g));
+  });
+  CACHE = visible;
+  return visible;
 }
 
 export function getUserGroups() {
@@ -70,6 +95,14 @@ export function getUserGroups() {
 
 export function getPostById(id) {
   return CACHE.find((post) => post.id === id) || null;
+}
+
+// Versão assíncrona: consulta a memória e, se não achar, cai para o
+// IndexedDB (ex.: bottom sheet aberto offline após reload).
+export async function getPostByIdAsync(id) {
+  const inMemory = getPostById(id);
+  if (inMemory) return inMemory;
+  return getCachedPost(id);
 }
 
 export function getCategories() {

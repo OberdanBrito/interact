@@ -2,6 +2,7 @@ import { state } from "../../core/state.js";
 import { STORAGE_KEYS, storageGet, storageSet } from "../../core/utils.js";
 import { login as apiLogin, setToken, fetchMyInteractions } from "../../data/posts.js";
 import { enqueue, syncNow } from "../../data/sync.js";
+import { clearCache } from "../../data/cache.js";
 
 export function getCurrentUser() {
   return state.user;
@@ -64,6 +65,7 @@ export function logout() {
   } catch {
     /* armazenamento indisponível */
   }
+  clearCache(); // não vazar posts cacheados entre usuários
   state.user = null;
   state.userData = { likes: [], read: [] };
 }

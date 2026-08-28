@@ -6,7 +6,7 @@ import {
   relativeDate,
   initialsOf,
 } from "../core/utils.js";
-import { getPostById, getCategoryLabel } from "../data/posts.js";
+import { getPostByIdAsync, getCategoryLabel } from "../data/posts.js";
 import { getUserData } from "../features/auth/session.js";
 import { actionButtonsHTML } from "../features/feed/templates.js";
 import { cancelAutoRead, scheduleAutoRead } from "../features/feed/autoread.js";
@@ -19,8 +19,8 @@ function currentActionsHTML(post) {
   });
 }
 
-export function openSheet(postId) {
-  const post = getPostById(postId);
+export async function openSheet(postId) {
+  const post = await getPostByIdAsync(postId);
   if (!post) return;
 
   state.sheetEpoch++;

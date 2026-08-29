@@ -17,6 +17,10 @@
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.0.0"
+    "mongoose": "^8.0.0",
+    "node-schedule": "^2.1.1"
+  },
+  "allowScripts": {
+    "bcrypt@6.0.0": true
   }
 }

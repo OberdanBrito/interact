@@ -42,6 +42,15 @@ const comunicadoSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    // Agendamento de publicação (I-01)
+    publishAt: {
+      type: Date,
+      default: null,
+    },
+    published: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );

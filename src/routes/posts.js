@@ -4,6 +4,7 @@ import Comunicado from "../models/Comunicado.js";
 import Group from "../models/Group.js";
 import auth from "../middleware/auth.js";
 import requireAdmin from "../middleware/requireAdmin.js";
+import { schedulePublish, cancelPublish } from "../scheduler.js";
 
 const router = Router();
 
@@ -13,6 +14,7 @@ router.use(auth);
 // Adapta formato para espelhar o schema do frontend
 async function toPost(doc) {
   const targetGroups = doc.targetGroups ?? [];
+  const published = doc.published !== false;
 
   // Resolve nomes dos grupos-alvo na mesma ordem de targetGroups
   // (inclui grupos inativos — comunicados antigos continuam mostrando nomes)
@@ -41,6 +43,9 @@ async function toPost(doc) {
     targetGroups,
     createdBy: doc.createdBy ? String(doc.createdBy) : null,
     targetGroupNames,
+    published,
+    status: published ? "publicado" : "agendado",
+    publishAt: doc.publishAt ? new Date(doc.publishAt).toISOString() : null,
   };
 }
 
@@ -88,6 +93,12 @@ router.get("/", async (req, res) => {
       });
     }
 
+    // Agendados só aparecem para quem os agendou (admin, na listagem).
+    // Colaborador nunca vê comunicado ainda não liberado.
+    if (req.user.role !== "admin") {
+      and.push({ published: true });
+    }
+
     if (and.length > 0) {
       filter.$and = and;
     }
@@ -115,8 +126,9 @@ router.get("/:id", async (req, res) => {
     const eligible =
       req.user.role === "admin"
         ? String(doc.createdBy) === String(req.user.id)
-        : targetGroups.length === 0 ||
-          targetGroups.some((g) => req.user.groupIds.includes(g));
+        : doc.published !== false &&
+          (targetGroups.length === 0 ||
+            targetGroups.some((g) => req.user.groupIds.includes(g)));
 
     if (!eligible) {
       return res.status(404).json({ error: "Comunicado não encontrado" });
@@ -131,7 +143,7 @@ router.get("/:id", async (req, res) => {
 
 // POST /api/posts — cria comunicado (somente admin)
 router.post("/", requireAdmin, async (req, res) => {
-  const { readMode, categoryId, urgent, title, body, author, targetGroups } =
+  const { readMode, categoryId, urgent, title, body, author, targetGroups, publishAt } =
     req.body;
 
   if (!title || !categoryId) {
@@ -166,6 +178,21 @@ router.post("/", requireAdmin, async (req, res) => {
     groups = targetGroups;
   }
 
+  // Valida agendamento (opcional) — só data futura
+  let scheduledAt = null;
+  if (publishAt && publishAt !== "") {
+    const candidate = new Date(publishAt);
+    if (Number.isNaN(candidate.getTime())) {
+      return res.status(400).json({ error: "Data de agendamento inválida" });
+    }
+    if (candidate.getTime() <= Date.now()) {
+      return res
+        .status(400)
+        .json({ error: "A data de agendamento deve estar no futuro" });
+    }
+    scheduledAt = candidate;
+  }
+
   try {
     // Gera próximo ID (p01, p02, ...)
     const last = await Comunicado.findOne().sort({ _id: -1 }).select("_id").lean();
@@ -190,8 +217,15 @@ router.post("/", requireAdmin, async (req, res) => {
       },
       targetGroups: groups,
       createdBy: req.user.id, // sempre do token, nunca do body
-      dateISO: new Date(),
+      // Agendado: dataISO = publishAt para posicionar o post na ordem correta do feed
+      dateISO: scheduledAt || new Date(),
+      publishAt: scheduledAt,
+      published: !scheduledAt,
     });
+
+    if (scheduledAt) {
+      schedulePublish(doc);
+    }
 
     res.status(201).json(await toPost(doc));
   } catch (err) {
@@ -202,7 +236,7 @@ router.post("/", requireAdmin, async (req, res) => {
 
 // PUT /api/posts/:id — edita comunicado (somente admin, body parcial)
 router.put("/:id", requireAdmin, async (req, res) => {
-  const { readMode, categoryId, urgent, title, body, author, targetGroups } =
+  const { readMode, categoryId, urgent, title, body, author, targetGroups, publishAt } =
     req.body;
 
   // Alvo é imutável após publicação
@@ -219,6 +253,36 @@ router.put("/:id", requireAdmin, async (req, res) => {
       return res.status(404).json({ error: "Comunicado não encontrado" });
     }
 
+    // Agendamento só pode ser alterado ANTES da liberação
+    if (publishAt !== undefined) {
+      if (doc.published === true) {
+        return res
+          .status(400)
+          .json({ error: "Não é possível reagendar após a publicação" });
+      }
+      if (publishAt === "" || publishAt === null) {
+        // Limpar a data = publicar agora
+        doc.publishAt = null;
+        doc.published = true;
+        doc.dateISO = new Date();
+      } else {
+        const candidate = new Date(publishAt);
+        if (Number.isNaN(candidate.getTime())) {
+          return res
+            .status(400)
+            .json({ error: "Data de agendamento inválida" });
+        }
+        if (candidate.getTime() <= Date.now()) {
+          return res
+            .status(400)
+            .json({ error: "A data de agendamento deve estar no futuro" });
+        }
+        cancelPublish(doc._id);
+        doc.publishAt = candidate;
+        doc.dateISO = candidate;
+      }
+    }
+
     // Update parcial — só altera campos presentes (equivalente ao COALESCE)
     // createdBy é imutável: nunca vem do body
     if (readMode) doc.readMode = readMode;
@@ -231,6 +295,11 @@ router.put("/:id", requireAdmin, async (req, res) => {
 
     await doc.save();
 
+    // Reagendado → re-agenda a nova data
+    if (!doc.published && doc.publishAt) {
+      schedulePublish(doc);
+    }
+
     res.json(await toPost(doc));
   } catch (err) {
     console.error("Erro ao editar comunicado:", err.message);
@@ -241,6 +310,7 @@ router.put("/:id", requireAdmin, async (req, res) => {
 // DELETE /api/posts/:id — exclui comunicado (somente admin)
 router.delete("/:id", requireAdmin, async (req, res) => {
   try {
+    cancelPublish(req.params.id); // não deixa o timer tentar liberar um post excluído
     const deleted = await Comunicado.findByIdAndDelete(req.params.id);
 
     if (!deleted) {

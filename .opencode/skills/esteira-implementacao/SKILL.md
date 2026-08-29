@@ -112,6 +112,15 @@ Gravar conceitos/camadas/lacunas no megamemory (record) ao concluir.
 10. **Confrontar os spec delta entre componentes** antes do apply e no QA (pré-condições
     cruzadas idênticas); spec principal exige `## Purpose` + `## Requirements` e deve ser
     validada com `openspec validate --specs --strict` antes do commit de archive.
+11. **Testes de integração versionados**: o portão de testes (Fase 4) usa scripts versionados no
+    repo (ex.: `backend/scripts/qa-*.mjs` + `npm run test:integration`); arquivos temporários em
+    /tmp não contam como evidência para o checklist. Divergência menor entre tasks/design e a
+    implementação também é registrada como **Decisão** na issue (não só as grandes).
+12. **QA: aguardar re-render assíncrono e verificar estado real**: após ações que disparam
+    `renderFeed()`/re-render assíncrono, aguardar antes de ler o DOM; estado de leitura (lido/não
+    lido) é verificado via DOM (`unread-dot`) e localStorage (`userData.read`), não só pelo
+    snapshot de a11y; fechar sheets/modais antes de interagir com filtros (backdrop intercepta
+    cliques).
 
 ## Checklist de verificação do dono (conferir periodicamente)
 

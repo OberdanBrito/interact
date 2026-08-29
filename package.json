@@ -8,7 +8,8 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "seed": "node src/db/seed.js",
-    "db:reset": "docker compose down -v && docker compose up -d && sleep 5 && npm run seed"
+    "db:reset": "docker compose down -v && docker compose up -d && sleep 5 && npm run seed",
+    "test:integration": "node scripts/qa-i11.mjs"
   },
   "license": "UNLICENSED",
   "dependencies": {

@@ -55,6 +55,7 @@ router.put("/:postId", async (req, res) => {
     if (liked === true && !existing?.liked) patch.likedAt = new Date();
     if (liked === false && existing?.liked) patch.likedAt = null;
     if (read === true && !existing?.read) patch.readAt = new Date();
+    if (read === false && existing?.read) patch.readAt = null;
 
     const doc = await Interaction.findOneAndUpdate(
       { postId, userId: req.user.id },

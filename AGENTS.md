@@ -64,12 +64,19 @@ PWA do colaborador. Vite + vite-plugin-pwa. Porta dev 5173.
 ## FLUXO DE TRABALHO
 Por issue funcional (I-01…I-15, projetos v2 #8):
 1. **Contexto** — consultar o knowledge graph (megamemory) e usar o status do GitHub (Projects v2) como fonte de verdade.
-2. **Implementação** — mudanças apenas nas worktrees das componentes afetadas (`backend/`, `frontend_admin/`, `frontend_pwa/`), cada uma na sua branch viva.
-3. **Teste** — integração no MongoDB real (docker) + `npm run build`/`node --check`.
-4. **Validação visual (obrigatória)** — navegadores MCP (Playwright `:5173`/admin `:5174`) cobrindo o fluxo real; screenshots em `/tmp/opencode/`.
-5. **Commit/push** — em português, estilo PLAIN, mensagem com id da issue (ex.: `Implementa agendamento de publicação (I-01)`); `git push` para `origin/<componente>`.
-6. **Encerramento** — no GitHub: issue/projeto Todos→Done; depois atualizar `ISSUES.md` e este `AGENTS.md` na `main` e push.
-7. **Memória** — gravar conceitos no megamemory (record) ao concluir.
+2. **Planejamento (OpenSpec)** — por componente afetada, rodar `opsx-propose` na sua worktree (`openspec/`). Gera `proposal.md`, `specs/<capability>/spec.md` (delta — critérios de aceite da issue), `design.md` e `tasks.md`. **Nada de código antes disso** (boundary de planejamento).
+3. **Implementação (OpenSpec)** — `opsx-apply` implementa task a task a partir de `tasks.md`. Depois do apply, commit por componente por issue (português, PLAIN, com id da issue).
+4. **Teste** — integração no MongoDB real (docker) + `npm run build`/`node --check`.
+5. **Validação visual (obrigatória)** — navegadores MCP (Playwright `:5173`/admin `:5174`) cobrindo o fluxo real; screenshots em `/tmp/opencode/`.
+6. **Push** — `git push` para `origin/<componente>`, incluindo o `openspec/`.
+7. **Archive (OpenSpec)** — `opsx-archive` move a change aprovada para `openspec/specs/`.
+8. **Encerramento** — no GitHub: projetos v2 Todos→Done; depois atualizar `ISSUES.md` e este `AGENTS.md` na `main` e push.
+9. **Memória** — gravar conceitos no megamemory (record) ao concluir.
+
+OpenSpec está configurado nas 3 componentes (`openspec/config.yaml` schema
+spec-driven + comandos `opsx-*` e skills em `.opencode/`). Mapeamento: **1 change
+por componente por issue** (ex.: I-02 → change backend + change admin). As
+branches vivas são `backend`, `frontend_admin`, `frontend_pwa`.
 
 Melhorias de plataforma (CI/CD, performance, dependências, segurança, deploy)
 entram como issues do projeto **Infra** (Projects v2 #10), não na fila funcional.

@@ -14,16 +14,20 @@ src/
 │   ├── state.js            #   objeto de estado global (comentários "// dono:" indicam o slice responsável por cada campo)
 │   └── utils.js            #   helpers puros: $, escapeHTML, storageGet/Set, relativeDate, initialsOf, STORAGE_KEYS, REDUCED_MOTION
 ├── data/                   # camada de dados
-│   └── posts.js            #   mock de dados + login simulado (ver aviso abaixo)
+│   ├── posts.js            #   cliente da API REST: login, getPosts (com groupId), getPostById, interações, isPostVisibleToUser
+│   ├── cache.js            #   cache offline em IndexedDB (Dexie): cachePosts, getCachedPosts, getCachedPost, clearCache
+│   └── sync.js             #   fila offline de interações (interact.syncQueue) + reenvio no evento online
 ├── features/               # um assunto de negócio completo por pasta (lógica + view + templates dele)
 │   ├── auth/
-│   │   └── session.js      #   sessão do usuário: login, logout, restore, likes/leituras persistidos
+│   │   └── session.js      #   sessão do usuário: login, logout, restore, likes/leituras persistidos, badge
 │   ├── feed/
-│   │   ├── feed.js         #   lista de comunicados: chips de categoria, filtro, renderização do feed
+│   │   ├── feed.js         #   feed: seletor de ambiente (grupos), chips de categoria, ordenação inteligente, renderização
 │   │   ├── autoread.js     #   marcação automática de leitura por dwell/scroll no sheet
 │   │   └── templates.js    #   templates HTML de post/comunicado (postCardHTML, actionButtonsHTML)
 │   ├── interactions/
 │   │   └── interactions.js #   ações sobre posts: curtir, confirmar leitura, delegação de cliques, sync da UI
+│   ├── notifications/
+│   │   └── badge.js        #   badge de não-lidos no ícone do app instalado (Badging API)
 │   └── install/
 │       └── pwa.js          #   registro do service worker + banner de instalação
 └── ui/                     # componentes visuais genéricos, usados por 2+ features
@@ -65,22 +69,19 @@ src/
 | ---------------------------- | ----------------------------------------------------- |
 | `app/`                       | `main.js`                                             |
 | `core/`                      | `state.js`, `utils.js`                                |
-| `data/`                      | `posts.js`                                            |
+| `data/`                      | `posts.js`, `cache.js`, `sync.js`                     |
 | `features/auth/`             | `session.js`                                          |
 | `features/feed/`             | `feed.js`, `autoread.js`, `templates.js`              |
 | `features/interactions/`     | `interactions.js`                                     |
+| `features/notifications/`    | `badge.js`                                            |
 | `features/install/`          | `pwa.js`                                              |
 | `ui/`                        | `sheet.js`, `toast.js`                                |
 
-## Aviso: `data/posts.js` é a camada de dados mock isolada
+## Camada de dados: API real + cache offline
 
-`src/data/posts.js` concentra o mock de comunicados (`CATEGORIES`, `POSTS`) e
-as funções de acesso (`login`, `getPosts`, `getPostById`, `getCategories`,
-`getCategoryLabel`). Ele existe justamente para **isolar o restante do app da
-fonte de dados**.
+`src/data/posts.js` é o **cliente da API REST** do backend (login, `getPosts` com `?groupId`, `getPostById`, interações). Não há mais mock.
 
-> **As assinaturas das funções exportadas devem ser preservadas.** Quando o
-> backend real estiver disponível, este arquivo é o único que muda: basta
-> trocar a implementação interna pelas chamadas de API mantendo os mesmos
-> nomes, parâmetros e formatos de retorno. Nenhum outro slice pode precisar
-> de alteração.
+- **Cache offline (Dexie)** — `src/data/cache.js` abre o banco IndexedDB `interact-cache` (tabela `posts` chaveada por `id`). `getPosts` grava o lote no cache em sucesso e, offline, cai para `filterCachedByGroup` (replica a regra de visibilidade do backend: admin vê tudo; colaborador vê broadcast + direcionados aos seus grupos). `getPostByIdAsync` lê memória → IndexedDB para o bottom sheet offline. `clearCache` no logout (não vazar posts entre usuários).
+- **Fila offline de interações** — `src/data/sync.js` enfileira curtidas/leituras em `interact.syncQueue` (localStorage) e reenvia ao backend no evento `online`. O estado local (`state.userData`) é a UI instantânea; o backend é a fonte de verdade do agregado.
+- **Badge de não-lidos** — `src/features/notifications/badge.js` usa a Badging API (`navigator.setAppBadge`) para mostrar no ícone do app instalado a contagem de comunicados não lidos visíveis ao usuário. Atualizado no `renderFeed` e no `markReadPersist`; limpo no logout. No-op gracioso fora de PWA instalado.
+- **Ordenação inteligente** — `sortFeed()` em `src/features/feed/feed.js`: urgentes primeiro, depois não-lidos, depois mais recentes (`dateISO` desc).

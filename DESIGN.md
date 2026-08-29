@@ -139,29 +139,33 @@ Regras: animar **apenas** `transform` e `opacity`; sheet usa `translateY`, curti
 index.html            entrada do Vite
 public/               copiado tal qual ao build (ícones, favicon)
 src/
-  main.js             boot e wiring de eventos (composition root)
-  state.js            estado único; cada campo tem um módulo dono documentado
-  data.js             dados mock + login simulado (assinaturas estáveis p/ API futura)
-  utils.js            helpers ($, escapeHTML, datas, iniciais, storage)
-  templates.js        templates HTML de card e ações
-  session.js          sessão e persistência por usuário (dono de user/userData)
-  feed.js             chips, filtro e renderização da lista (dono de filter)
-  interactions.js     curtir/confirmar leitura/sync de UI + bindActionContainer()
-  autoread.js         marcação automática: abertura instantânea, dwell 3s, scroll
-  sheet.js            bottom sheet: abertura, fechamento (guard anti-race), focus trap
-  toast.js            feedback efêmero
-  pwa.js              banner de instalação + registro do service worker
+  app/main.js         boot e wiring de eventos (composition root)
+  core/state.js       estado único; cada campo tem um módulo dono documentado
+  core/utils.js       helpers ($, escapeHTML, datas, iniciais, storage)
+  data/posts.js       cliente da API REST (login, posts com groupId, interações)
+  data/cache.js       cache offline em IndexedDB (Dexie) — posts para leitura sem conexão
+  data/sync.js        fila offline de interações (reenvio no evento online)
+  features/auth/session.js   sessão e persistência por usuário (dono de user/userData)
+  features/feed/feed.js      seletor de ambiente, chips, ordenação inteligente, renderização
+  features/feed/autoread.js  marcação automática: abertura instantânea, dwell 3s, scroll
+  features/feed/templates.js templates HTML de card e ações
+  features/interactions/interactions.js  curtir/confirmar leitura/sync de UI + bindActionContainer()
+  features/notifications/badge.js  badge de não-lidos no ícone do app (Badging API)
+  features/install/pwa.js   banner de instalação + registro do service worker
+  ui/sheet.js         bottom sheet: abertura, fechamento (guard anti-race), focus trap
+  ui/toast.js         feedback efêmero
 scripts/
   gen_icons.py        gera os ícones PNG sem dependências externas
   qa-pwa.mjs          QA automatizado end-to-end (npm run qa; requer preview ativo)
+  qa-offline-cache.mjs / qa-offline-collab.mjs / qa-badge-sort.mjs  QA focados
 ```
 
 ## 9. Dívidas aceitas (v1)
 
-- Auth é simulada (qualquer e-mail válido + senha ≥ 6 chars); sem backend real
-- Interações (curtir/leitura) persistem em `localStorage`, não em servidor
 - Sem modo escuro (decisão do usuário)
 - Sem comentários (fora do escopo v1)
+- Badge de não-lidos só funciona em PWA instalado (Chromium); no navegador é no-op gracioso
+- Notificação push adiada (depende de servidores externos — decisão do usuário)
 
 ## 10. Resolvido
 

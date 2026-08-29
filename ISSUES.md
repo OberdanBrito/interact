@@ -20,10 +20,10 @@ implementar e como verificar. Atualize o status ao iniciar/concluir cada item.
 |---|---|---|---|---|---|
 | Alta | 1 | 0 | 1 | 0 | 0 |
 | Média | 5 | 0 | 1 | 0 | 0 |
-| Baixa | 6 | 0 | 0 | 0 | 0 |
+| Baixa | 5 | 0 | 1 | 0 | 0 |
 | — | 0 | 0 | 0 | 1 | 3 |
 
-**Total: 18 issues** (2 Alta — 1 aberta, 1 concluída —, 6 Média — 1 concluída —, 6 Baixa, 1 Adiada, 3 Fora de escopo)
+**Total: 18 issues** (2 Alta — 1 aberta, 1 concluída —, 6 Média — 1 concluída —, 6 Baixa — 5 abertas, 1 concluída —, 1 Adiada, 3 Fora de escopo)
 
 ## Vínculo com GitHub
 
@@ -199,16 +199,17 @@ fila funcional deste documento.
 
 ### I-11 — Marcar como não-lido
 - **Descrição:** permitir ao colaborador reverter a leitura de um comunicado (hoje só marca como lido).
-- **Componentes:** `frontend_pwa` (interactions.js, session.js), `backend` (rota interactions)
+- **Componentes:** `frontend_pwa` (interactions.js, session.js, feed, badge), `backend` (rota interactions)
 - **Prioridade:** Baixa
 - **Esforço:** S (≤ 1 dia)
-- **Status:** Aberto
-- **Contexto atual:** backend JÁ aceita `read: false` em `PUT /api/interactions/:postId`; falta a UI do PWA (reverter + badge + ordenação). Decisão pendente: limpar `readAt` ao reverter? (afeta "quem leu" no admin).
+- **Status:** Concluído
+- **Registro:** backend `cd78403` + `751dbf2` (branch `backend`), frontend_pwa `1631541` + `c046ab6` (branch `frontend_pwa`). Verificado por teste de integração (Mongo real, 15/15) e validação visual (Playwright :5173). OpenSpec arquivado em `openspec/changes/archive/2026-08-29-marcar-como-nao-lido`.
+- **Decisão:** ao reverter (`read: false`), o backend **limpa `readAt`** (null) — decisão do dono — para as métricas "quem leu" do admin refletirem a reversão; re-ler depois repreenche `readAt`. Ação "Marcar como não lido" entra nos templates compartilhados (card + sheet).
 - **Critérios de aceite:**
-  - [ ] Ação "Marcar como não lido" no sheet; post volta para o grupo de não-lidos na ordenação
-  - [ ] Estado sincroniza ao backend (`PUT /api/interactions/:postId` com `read: false`)
-  - [ ] Badge de não-lidos recontado corretamente
-  - [ ] Métricas "quem leu" do admin refletem a reversão (depende da decisão sobre `readAt`)
+  - [x] Ação "Marcar como não lido" no sheet; post volta para o grupo de não-lidos na ordenação
+  - [x] Estado sincroniza ao backend (`PUT /api/interactions/:postId` com `read: false`)
+  - [x] Badge de não-lidos recontado corretamente
+  - [x] Métricas "quem leu" do admin refletem a reversão (`readAt` limpo ao reverter)
 
 ### I-12 — Arquivo/histórico de comunicados antigos
 - **Descrição:** separar comunicados ativos de antigos (ex.: aba "Arquivo" ou filtro por período), hoje tudo aparece na mesma lista.

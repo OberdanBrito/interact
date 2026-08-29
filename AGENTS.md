@@ -11,7 +11,7 @@ A empresa publica comunicados; colaboradores leem. Nada mais. **Exceção parcia
 O que existe:
 - Admin autenticado cria/edita/remove comunicados (com categorias, **grupos-alvo** e modo de leitura). Pode salvar **rascunho** (`status: "draft"`, campo `draft: true` no model) com campos incompletos — só o admin que o criou vê; publicar rascunho exige título, categoria, autor e conteúdo.
 - **Segmentação por grupo**: `targetGroups: []` = broadcast; preenchido = exclusivo (união dos grupos). Colaborador vê broadcast + direcionados aos seus grupos; admin vê só o que publicou (`createdBy`).
-- Colaborador autenticado lê o feed (com **ordenação inteligente**: urgentes → não-lidos → recentes), curte e confirma leitura.
+- Colaborador autenticado lê o feed (com **ordenação inteligente**: urgentes → não-lidos → recentes), curte, confirma leitura e pode **marcar como não lido** (reverter a leitura).
 - **Cache offline (Dexie)**: posts ficam disponíveis sem conexão; interações sincronizam ao backend (`PUT /api/interactions/:postId`) com fila offline; admin vê agregados por comunicado (`GET /api/interactions?postId=`) e por usuário (`GET /api/interactions/members`).
 - **Badge de não-lidos** no ícone do app instalado (Badging API, 100% client-side).
 
@@ -57,7 +57,7 @@ Painel administrativo. Vite vanilla JS. Porta dev 5174. Sem testes.
 ### frontend_pwa/
 PWA do colaborador. Vite + vite-plugin-pwa. Porta dev 5173.
 - Views: login, feed, bottom sheet (detalhe do post), toast, banner de instalação.
-- Features: auth/session, feed (seletor de ambiente, chips de categoria, ordenação inteligente, cards, autoread), interactions (curtir, confirmar leitura), notifications/badge (Badging API), install/pwa.
+- Features: auth/session, feed (seletor de ambiente, chips de categoria, ordenação inteligente, cards, autoread), interactions (curtir, confirmar leitura, marcar como não lido), notifications/badge (Badging API), install/pwa.
 - Dados: data/posts.js (API REST), data/cache.js (cache offline Dexie), data/sync.js (fila offline de interações).
 - Scripts: `dev`, `build`, `preview`, `qa` (scripts/qa-pwa.mjs), E2E (scripts/e2e-admin-to-pwa.mjs, e2e-admin-ui-to-pwa.mjs), QA focados (scripts/qa-offline-cache.mjs, qa-offline-collab.mjs, qa-badge-sort.mjs).
 
@@ -111,6 +111,7 @@ Autenticação JWT em ambos os frontends. Nenhum conteúdo flui do colaborador a
 
 ## CONVENÇÕES
 - Interações (curtir, leitura) persistem em localStorage do cliente **e** sincronizam ao backend (fonte de verdade do agregado); fila offline em `interact.syncQueue`.
+- **Reverter leitura (I-11)**: ação "Marcar como não lido" (`.js-unread`) aparece no card e no sheet quando o post está lido (`actionButtonsHTML`); `markUnreadPersist` remove o postId da lista `read` local, enfileira `{ read: false }` e `renderFeed()` reordena o feed (volta ao grupo de não-lidos) e `refreshBadge()` recontam o badge. Backend limpa `readAt` (null) ao reverter (`read: false`); re-ler repreenche `readAt`. Métricas "quem leu" (`/api/interactions/members`) refletem a reversão.
 - **Segmentação**: `targetGroups: []` = broadcast; preenchido = exclusivo (união). `targetGroups`/`groupIds` guardam `Group._id` como string. Alvo imutável APÓS publicação (400 no PUT); rascunho/agendado (`published === false`) ainda pode editá-lo.
 - **Rascunhos (I-02)**: estado derivado no model — `draft === true` ⇒ `published: false` e `publishAt: null`; `toPost` reporta `status: "rascunho"`. `title`/`categoryId` não são mais `required` no schema (defaults `""`/`"geral"`); a obrigatoriedade é validada na rota apenas para não-rascunho. Publicar rascunho (`status: "published"` no PUT) exige título, categoria, autor (nome) e corpo não vazio (valores efetivos payload|doc). Rascunho invisível ao colaborador (filtro `published: true` no GET).
 - **Visibilidade**: colaborador vê broadcast + direcionados aos seus grupos; sem grupo → só broadcast; admin → só o que publicou (`createdBy`). `GET /:id` não elegível → 404 (não 403).

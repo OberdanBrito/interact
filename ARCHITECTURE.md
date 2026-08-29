@@ -13,7 +13,9 @@ src/
 ├── data/       Busca e persistência de dados (camada de acesso a dados).
 ├── features/   Assuntos de negócio completos: lógica + view + templates do assunto.
 │   ├── auth/       Autenticação: sessão e tela de login.
-│   └── posts/      Comunicados: listagem e formulário de publicação.
+│   ├── posts/      Comunicados: listagem e formulário de publicação.
+│   ├── groups/     Grupos: listagem e formulário de criação/edição.
+│   └── analytics/  Métricas de leitura/curtida por comunicado.
 └── ui/         Componentes visuais genéricos usados por 2+ features.
 ```
 
@@ -55,18 +57,22 @@ src/
 | `state.js` (estado central, slices com `// dono:`) | `core/state.js` |
 | `utils.js` (storage, datas, texto, `$`) | `core/utils.js` |
 | `posts.js` (camada de dados de comunicados) | `data/posts.js` |
+| `groups.js` (camada de dados de grupos) | `data/groups.js` |
 | `toast.js` (notificações) | `ui/toast.js` |
 | `templates.js` (shell, badges, modal — genéricos) | `ui/templates.js` |
 | `session.js` (sessão do usuário) | `features/auth/session.js` |
 | `login-view.js` (tela de login) | `features/auth/login-view.js` |
 | `list-view.js` (listagem de comunicados) | `features/posts/list-view.js` |
 | `form-view.js` (criação/edição de comunicado) | `features/posts/form-view.js` |
+| `list-view.js` (listagem de grupos) | `features/groups/list-view.js` |
+| `form-view.js` (criação/edição de grupo) | `features/groups/form-view.js` |
+| `list-view.js` (métricas por comunicado) | `features/analytics/list-view.js` |
+| `detail-view.js` (quem leu/curtiu) | `features/analytics/detail-view.js` |
 
-## Aviso: `data/posts.js` é uma camada mock isolada
+## Camada de dados: API real
 
-`data/posts.js` persiste em **localStorage** e simula latência. É uma camada de
-dados **deliberadamente isolada** com **assinaturas estáveis**
-(`listPosts`, `getPost`, `createPost`, `updatePost`, `deletePost`, `CATEGORIES`)
-para permitir a **troca futura por uma API real sem tocar em nenhuma feature**.
-Ao fazer essa troca, substitua apenas a implementação dentro de `data/` —
-não altere as assinaturas exportadas.
+`data/posts.js` e `data/groups.js` são **clientes da API REST** do backend (fetch + Bearer token). Não há mais mock.
+
+- **Comunicados** — `listPosts`, `getPost`, `createPost`, `updatePost`, `deletePost`. O formulário de criação envia `targetGroups` (grupos-alvo) e intercepta o submit com um modal de confirmação mostrando a contagem de destinatários (`getRecipientCount`); broadcast exibe alerta forte. Em edição, o alvo fica desabilitado (imutável após publicação).
+- **Grupos** — `listGroups`, `createGroup`, `updateGroup`, `getRecipientCount`. CRUD admin-only; desativação via `active: false` (sem hard delete).
+- **Métricas** — `features/analytics/` consome `GET /api/interactions?postId=` (agregado por grupo) e `GET /api/interactions/members?postId=` (quem leu/curtiu).

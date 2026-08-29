@@ -76,8 +76,11 @@ Gravar conceitos/camadas/lacunas no megamemory (record) ao concluir.
 3. **Registro de atividades na issue antes de Done/fechar** (Fase 8.1).
 4. **1 change por componente por issue; commit por issue; mensagens PLAIN em pt-BR com id.**
 5. **Evidência sempre**: screenshots em `/tmp/opencode/`, hashes de commit no registro da issue.
-6. Se um portão não foi cumprido: **parar e reportar ao dono**, não "fechar" mesmo assim.
-7. Divergência entre o implementado e o planejado → registrar como **Decisão** na issue e
+6. **Ao criar qualquer issue nova**: incluir no corpo o requisito `Respeitar estritamente a
+   skill do fluxo da esteira de implementação` (usar o template
+   `.github/ISSUE_TEMPLATE/issue_template.md` da `main`; nunca criar issue sem o bloco).
+7. Se um portão não foi cumprido: **parar e reportar ao dono**, não "fechar" mesmo assim.
+8. Divergência entre o implementado e o planejado → registrar como **Decisão** na issue e
    reescrever o critério no ISSUES.md.
 
 ## Checklist de verificação do dono (conferir periodicamente)

@@ -1,7 +1,7 @@
 import { state } from "../core/state.js";
 import { $, initialsOf } from "../core/utils.js";
 import { restoreSession, login, logout, getCurrentUser, restoreInteractions } from "../features/auth/session.js";
-import { renderChips, renderEnvSelector, renderFeed, resetActiveGroup, resetFilter } from "../features/feed/feed.js";
+import { renderArchiveTabs, renderChips, renderEnvSelector, renderFeed, resetActiveGroup, resetFilter } from "../features/feed/feed.js";
 import {
   bindActionContainer,
   toggleLike,
@@ -24,6 +24,7 @@ function showView(view) {
 
 function enterFeed() {
   renderEnvSelector();
+  renderArchiveTabs();
   renderChips();
   renderFeed();
   const user = getCurrentUser();

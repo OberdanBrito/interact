@@ -3,6 +3,7 @@ export const state = {
   userData: null,           // dono: session.js ({ likes: [], read: [] })
   filter: "todas",          // dono: feed.js
   activeGroupId: "todas",   // dono: feed.js (ambiente: "todas" ou id de grupo)
+  archive: "active",        // dono: feed.js (visão do feed: "active" | "archived")
   deferredPrompt: null,     // dono: pwa.js
   sheetRestoreFocus: null,  // dono: sheet.js
   sheetPostId: null,        // dono: sheet.js

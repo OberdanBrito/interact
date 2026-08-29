@@ -100,6 +100,7 @@
         </div>
       </div>
       <div class="env-selector" id="env-selector" hidden></div>
+      <nav class="archive-tabs" id="archive-tabs" aria-label="Alternar entre comunicados ativos e arquivados"></nav>
       <nav class="chips" aria-label="Filtrar comunicados por categoria">
         <div class="chips-scroll" id="chips"></div>
       </nav>
@@ -109,8 +110,8 @@
       <ul class="post-list" id="post-list"></ul>
       <div class="empty-state" id="empty-state" hidden>
         <svg width="64" height="64" aria-hidden="true"><use href="#i-inbox"/></svg>
-        <h2>Nenhum comunicado por aqui</h2>
-        <p>Não há publicações nesta categoria ainda.</p>
+        <h2 id="empty-title">Nenhum comunicado por aqui</h2>
+        <p id="empty-sub">Não há publicações nesta categoria ainda.</p>
       </div>
     </main>
   </div>

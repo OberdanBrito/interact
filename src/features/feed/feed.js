@@ -7,6 +7,11 @@ import { postCardHTML } from "./templates.js";
 
 const ALL_GROUPS_ID = "todas";
 
+const ARCHIVE_VIEWS = [
+  { id: "active", label: "Ativos" },
+  { id: "archived", label: "Arquivo" },
+];
+
 export function resetFilter() {
   state.filter = "todas";
 }
@@ -27,6 +32,27 @@ function restoreActiveGroup() {
     saved !== ALL_GROUPS_ID && groups.some((group) => group.id === saved)
       ? saved
       : ALL_GROUPS_ID;
+}
+
+// Aba "Ativos | Arquivo" (I-12): alterna entre comunicados recentes e antigos.
+export function renderArchiveTabs() {
+  const container = $("#archive-tabs");
+  container.innerHTML = "";
+  for (const view of ARCHIVE_VIEWS) {
+    const tab = document.createElement("button");
+    tab.type = "button";
+    tab.className = "chip";
+    tab.textContent = view.label;
+    tab.dataset.archive = view.id;
+    tab.setAttribute("aria-pressed", String(state.archive === view.id));
+    tab.addEventListener("click", () => {
+      if (state.archive === view.id) return;
+      state.archive = view.id;
+      renderArchiveTabs();
+      renderFeed();
+    });
+    container.appendChild(tab);
+  }
 }
 
 export function renderEnvSelector() {
@@ -78,11 +104,20 @@ function sortFeed(posts) {
   });
 }
 
+// Ordenação da visão "Arquivo": antigos por data (mais recente do grupo primeiro).
+function sortByDate(posts) {
+  return [...posts].sort((a, b) => {
+    const aTime = new Date(a.dateISO || 0).getTime();
+    const bTime = new Date(b.dateISO || 0).getTime();
+    return bTime - aTime;
+  });
+}
+
 async function visiblePosts() {
-  const posts = await getPosts(state.activeGroupId);
+  const posts = await getPosts(state.activeGroupId, { archive: state.archive });
   const filtered =
     state.filter === "todas" ? posts : posts.filter((post) => post.categoryId === state.filter);
-  return sortFeed(filtered);
+  return state.archive === "archived" ? sortByDate(filtered) : sortFeed(filtered);
 }
 
 export function renderChips() {
@@ -109,6 +144,15 @@ export async function renderFeed() {
   const empty = $("#empty-state");
   const userData = getUserData();
   const posts = await visiblePosts();
+
+  if (state.archive === "archived") {
+    $("#empty-title").textContent = "Nenhum comunicado arquivado";
+    $("#empty-sub").textContent =
+      "Os comunicados publicados há mais de 30 dias aparecem aqui.";
+  } else {
+    $("#empty-title").textContent = "Nenhum comunicado por aqui";
+    $("#empty-sub").textContent = "Não há publicações nesta categoria ainda.";
+  }
 
   empty.hidden = posts.length > 0;
   list.innerHTML = posts

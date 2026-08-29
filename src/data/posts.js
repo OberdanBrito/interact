@@ -14,6 +14,10 @@ export const CATEGORIES = [
   { id: "beneficios", label: "Benefícios" },
 ];
 
+// Janela de idade que separa comunicados ativos de arquivados (I-12).
+// Deve espelhar ARCHIVE_AFTER_DAYS do backend (mesmo critério nos dois lados).
+export const ARCHIVE_AFTER_DAYS = 30;
+
 let TOKEN = null;
 let CACHE = [];
 
@@ -47,12 +51,19 @@ export async function login(email, password) {
   };
 }
 
-export async function getPosts(groupId) {
+export async function getPosts(groupId, { archive } = {}) {
   if (!TOKEN) return [];
   try {
+    const params = [];
+    if (groupId && groupId !== "todas") {
+      params.push(`groupId=${encodeURIComponent(groupId)}`);
+    }
+    if (archive === "active" || archive === "archived") {
+      params.push(`archive=${archive}`);
+    }
     const url =
-      groupId && groupId !== "todas"
-        ? `${API_BASE}/api/posts?groupId=${encodeURIComponent(groupId)}`
+      params.length > 0
+        ? `${API_BASE}/api/posts?${params.join("&")}`
         : `${API_BASE}/api/posts`;
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${TOKEN}` },
@@ -64,7 +75,7 @@ export async function getPosts(groupId) {
     return posts;
   } catch {
     // offline ou rede indisponível: cai para o cache do IndexedDB
-    return filterCachedByGroup(groupId);
+    return filterCachedByGroup(groupId, archive);
   }
 }
 
@@ -77,14 +88,21 @@ export function isPostVisibleToUser(post) {
   return targets.some((g) => (state.user?.groupIds || []).includes(g));
 }
 
-async function filterCachedByGroup(groupId) {
+async function filterCachedByGroup(groupId, archive) {
   const cached = await getCachedPosts();
   if (cached.length === 0) return [];
+  const cutoff = Date.now() - ARCHIVE_AFTER_DAYS * 24 * 60 * 60 * 1000;
   const visible = cached.filter((post) => {
     if (!isPostVisibleToUser(post)) return false;
     const targets = post.targetGroups || [];
-    if (targets.length === 0) return true; // broadcast
-    if (groupId && groupId !== "todas") return targets.includes(groupId);
+    if (targets.length === 0) {
+      /* broadcast: visível */
+    } else if (groupId && groupId !== "todas") {
+      if (!targets.includes(groupId)) return false;
+    }
+    const time = new Date(post.dateISO || 0).getTime();
+    if (archive === "active" && time < cutoff) return false;
+    if (archive === "archived" && time >= cutoff) return false;
     return true;
   });
   CACHE = visible;

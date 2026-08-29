@@ -36,6 +36,16 @@ function parseBody(text) {
     .filter(Boolean);
 }
 
+// Converte uma data ISO para o formato do input datetime-local (fuso local)
+function toDatetimeLocal(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}`;
+}
+
 function readModeCardHTML(value, title, hint, checked) {
   return `
     <label class="radio-card">
@@ -192,6 +202,25 @@ export async function render(root, { id } = {}) {
         }</p>
       </fieldset>
 
+      ${
+        values.published === false || !editing
+          ? `<div class="field">
+               <label class="field-label" for="f-publish-at">Agendamento (opcional)</label>
+               <input class="input" id="f-publish-at" data-field="publish-at" type="datetime-local"
+                      value="${escapeHTML(toDatetimeLocal(values.publishAt))}"
+                      aria-describedby="f-publish-hint ${errorId("publish-at")}">
+               <p class="field-hint" id="f-publish-hint">
+                 ${
+                   values.published === false
+                     ? "Defina a data/hora de liberação. Enquanto isso, o comunicado aparece com o selo “Agendado” na lista."
+                     : "Em branco publica imediatamente. Preenchido, agenda a liberação para uma data futura."
+                 }
+               </p>
+               <p class="field-error" id="${errorId("publish-at")}" hidden></p>
+             </div>`
+          : ""
+      }
+
       <div class="form-grid">
         <div class="field">
           <label class="field-label" for="f-author-name">Autor — nome</label>
@@ -239,6 +268,7 @@ export async function render(root, { id } = {}) {
     authorRole: root.querySelector("#f-author-role"),
     body: root.querySelector("#f-body"),
     urgent: root.querySelector("#f-urgent"),
+    publishAt: root.querySelector("#f-publish-at"),
   };
 
   form.addEventListener("input", (event) => {
@@ -277,9 +307,11 @@ export async function render(root, { id } = {}) {
           await createPost(data);
         }
         showToast(
-          editing
-            ? "Comunicado atualizado com sucesso"
-            : "Comunicado publicado com sucesso"
+          !editing && data.publishAt
+            ? "Comunicado agendado com sucesso"
+            : editing
+              ? "Comunicado atualizado com sucesso"
+              : "Comunicado publicado com sucesso"
         );
         location.hash = "#/posts";
       } catch (err) {
@@ -306,6 +338,7 @@ export async function render(root, { id } = {}) {
       title: data.title,
       recipientCount: count,
       isBroadcast: data.targetGroups.length === 0,
+      scheduledAt: data.publishAt || null,
     });
 
     const overlay = modalRoot.querySelector(".js-modal-overlay");
@@ -362,6 +395,24 @@ export async function render(root, { id } = {}) {
     if (data.body.length === 0)
       fail(input.body, "Escreva ao menos um parágrafo de conteúdo.");
 
+    // Agendamento: opcional, mas sempre no futuro.
+    // Em edição de agendado, limpar a data = publicar agora.
+    if (input.publishAt) {
+      const raw = input.publishAt.value;
+      if (raw) {
+        const when = new Date(raw);
+        if (Number.isNaN(when.getTime())) {
+          fail(input.publishAt, "Data de agendamento inválida.");
+        } else if (when.getTime() <= Date.now()) {
+          fail(input.publishAt, "Escolha uma data e hora futuras.");
+        } else {
+          data.publishAt = when.toISOString();
+        }
+      } else if (editing && values.published === false) {
+        data.publishAt = ""; // publica agora
+      }
+    }
+
     if (firstInvalid) {
       firstInvalid.focus();
       return;
@@ -370,6 +421,10 @@ export async function render(root, { id } = {}) {
     if (editing) {
       /* Alvo imutável — PUT rejeita targetGroups com 400. */
       delete data.targetGroups;
+      /* Comunicado já publicado não pode ser reagendado. */
+      if (values.published !== false) {
+        delete data.publishAt;
+      }
       persist(data);
     } else {
       openSendConfirmModal(data);

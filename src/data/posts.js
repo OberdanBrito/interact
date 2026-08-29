@@ -16,6 +16,9 @@ export const CATEGORIES = [
    { id, readMode: "auto" | "ack", categoryId, urgent: boolean,
      likeBase: number, title: string, body: string[],
      author: { name, role }, dateISO } */
+/* Campos de agendamento (I-01):
+   publishAt: ISO | null (futuro = agendado), published: boolean,
+   status: "publicado" | "agendado" */
 
 let TOKEN = null;
 

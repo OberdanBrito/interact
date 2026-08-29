@@ -76,6 +76,10 @@ export function targetedBadgeHTML() {
   return `<span class="badge badge-targeted">${icon("i-users", 12)} Direcionado</span>`;
 }
 
+export function scheduledBadgeHTML() {
+  return `<span class="badge badge-scheduled">${icon("i-alert", 12)} Agendado</span>`;
+}
+
 export function readModeLabel(readMode) {
   return readMode === "ack" ? "Confirmação" : "Automática";
 }
@@ -88,6 +92,7 @@ export function postRowHTML(post) {
       <td class="cell-post">
         <div class="cell-title">
           <span class="cell-title-text">${title}</span>
+          ${post.status === "agendado" ? scheduledBadgeHTML() : ""}
           ${post.urgent ? urgentBadgeHTML() : ""}
           ${(post.targetGroups || []).length > 0 ? targetedBadgeHTML() : ""}
         </div>
@@ -195,26 +200,42 @@ export function confirmModalHTML({ postTitle }) {
     </div>`;
 }
 
-export function sendConfirmModalHTML({ title, recipientCount, isBroadcast }) {
+export function sendConfirmModalHTML({ title, recipientCount, isBroadcast, scheduledAt }) {
+  const isScheduled = Boolean(scheduledAt);
+  const whenLabel = isScheduled
+    ? new Date(scheduledAt).toLocaleString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "";
   return `
     <div class="modal-overlay js-modal-overlay">
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"
            aria-describedby="modal-desc">
         <span class="modal-icon ${isBroadcast ? "modal-icon-broadcast" : "modal-icon-send"}"
               aria-hidden="true">${icon(isBroadcast ? "i-alert" : "i-users", 22)}</span>
-        <h2 id="modal-title">${isBroadcast ? "Enviar para todos?" : "Confirmar envio"}</h2>
+        <h2 id="modal-title">${isScheduled ? "Agendar publicação?" : isBroadcast ? "Enviar para todos?" : "Confirmar envio"}</h2>
         <p id="modal-desc">
           ${
-            isBroadcast
-              ? `Este comunicado será enviado a <strong>TODOS os ${recipientCount} colaboradores</strong>. Esta ação não pode ser desfeita. Confirmar envio?`
-              : `Este comunicado será enviado a <strong>${recipientCount} colaboradores</strong> dos grupos selecionados. Confirmar envio?`
+            isScheduled
+              ? `Este comunicado será liberado para <strong>${
+                  isBroadcast ? `TODOS os ${recipientCount}` : `${recipientCount}`
+                } colaboradores</strong> em <strong>${whenLabel}</strong>. Não será preciso nenhuma ação manual. Confirmar o agendamento?`
+              : isBroadcast
+                ? `Este comunicado será enviado a <strong>TODOS os ${recipientCount} colaboradores</strong>. Esta ação não pode ser desfeita. Confirmar envio?`
+                : `Este comunicado será enviado a <strong>${recipientCount} colaboradores</strong> dos grupos selecionados. Confirmar envio?`
           }
         </p>
         <p class="modal-post-title">“${escapeHTML(title)}”</p>
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost js-modal-cancel">Cancelar</button>
           <button type="button" class="btn btn-primary js-modal-confirm">
-            ${icon("i-megaphone")}<span>Confirmar envio</span>
+            ${icon(isScheduled ? "i-alert" : "i-megaphone")}<span>${
+              isScheduled ? "Agendar publicação" : "Confirmar envio"
+            }</span>
           </button>
         </div>
       </div>

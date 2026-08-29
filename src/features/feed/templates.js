@@ -22,7 +22,7 @@ export function actionButtonsHTML(post, { liked, read }) {
 }
 
 export function postCardHTML(post, { liked, read }) {
-  const author = escapeHTML(post.author.name);
+  const author = escapeHTML(post.author?.name || "—");
   return `
     <li class="post-card" data-post-id="${post.id}">
       <div class="post-meta-row">
@@ -40,7 +40,7 @@ export function postCardHTML(post, { liked, read }) {
       <p class="post-excerpt">${escapeHTML(post.body.join(" "))}</p>
       <div class="post-footer">
         <span class="post-author">
-          <span class="avatar avatar-sm" aria-hidden="true">${initialsOf(post.author.name)}</span>
+          <span class="avatar avatar-sm" aria-hidden="true">${initialsOf(post.author?.name || "")}</span>
           <span class="post-author-name">${author}</span>
         </span>
         ${actionButtonsHTML(post, { liked, read })}

@@ -33,8 +33,10 @@ export async function openSheet(postId) {
   $("#sheet-urgent").hidden = !post.urgent;
   $("#sheet-date").textContent = relativeDate(post.dateISO);
   $("#sheet-title").textContent = post.title;
-  $("#sheet-avatar").textContent = initialsOf(post.author.name);
-  $("#sheet-author").textContent = `${post.author.name} · ${post.author.role}`;
+  $("#sheet-avatar").textContent = initialsOf(post.author?.name || "");
+  $("#sheet-author").textContent = [post.author?.name, post.author?.role]
+    .filter(Boolean)
+    .join(" · ") || "—";
   $("#sheet-text").innerHTML = post.body
     .map((paragraph) => `<p>${escapeHTML(paragraph)}</p>`)
     .join("");

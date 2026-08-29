@@ -1,8 +1,14 @@
 import { state } from "../../core/state.js";
 import { $, REDUCED_MOTION } from "../../core/utils.js";
 import { getPostById } from "../../data/posts.js";
-import { toggleLikePersist, markReadPersist, getUserData } from "../auth/session.js";
+import {
+  toggleLikePersist,
+  markReadPersist,
+  markUnreadPersist,
+  getUserData,
+} from "../auth/session.js";
 import { actionButtonsHTML } from "../feed/templates.js";
+import { renderFeed } from "../feed/feed.js";
 import { showToast } from "../../ui/toast.js";
 
 export function toggleLike(postId) {
@@ -40,6 +46,21 @@ export function confirmReading(postId) {
   if (wasUnread) showToast("Leitura confirmada");
 }
 
+export function markUnread(postId) {
+  markUnreadPersist(postId);
+  const post = getPostById(postId);
+  const userData = getUserData();
+  const sheetActions = $("#sheet-actions");
+  if (!$("#sheet").hidden && sheetActions.dataset.postId === postId) {
+    sheetActions.innerHTML = actionButtonsHTML(post, {
+      liked: userData.likes.includes(postId),
+      read: false,
+    });
+  }
+  renderFeed();
+  showToast("Marcado como não lido");
+}
+
 export function syncPostUI(postId) {
   const post = getPostById(postId);
   const userData = getUserData();
@@ -69,9 +90,11 @@ export function bindActionContainer(root, { onOpen } = {}) {
   root.addEventListener("click", (event) => {
     const likeBtn = event.target.closest(".js-like");
     const readBtn = event.target.closest(".js-read");
+    const unreadBtn = event.target.closest(".js-unread");
     const openBtn = event.target.closest(".js-open-post");
     if (likeBtn) toggleLike(likeBtn.dataset.postId);
     else if (readBtn) confirmReading(readBtn.dataset.postId);
+    else if (unreadBtn) markUnread(unreadBtn.dataset.postId);
     else if (openBtn && onOpen) onOpen(openBtn.dataset.postId);
   });
 }

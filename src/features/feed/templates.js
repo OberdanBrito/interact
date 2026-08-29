@@ -18,6 +18,12 @@ export function actionButtonsHTML(post, { liked, read }) {
         <svg width="18" height="18" aria-hidden="true"><use href="#i-check"/></svg>
         <span>${read ? "Leitura confirmada" : "Confirmar leitura"}</span>
       </button>` : ""}
+      ${read ? `
+      <button type="button" class="action-btn js-unread" data-post-id="${post.id}"
+              aria-label="Marcar como não lido">
+        <svg width="18" height="18" aria-hidden="true"><use href="#i-x"/></svg>
+        <span>Marcar como não lido</span>
+      </button>` : ""}
     </div>`;
 }
 

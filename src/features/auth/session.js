@@ -98,3 +98,14 @@ export function markReadPersist(postId) {
   }
   return wasUnread;
 }
+
+export function markUnreadPersist(postId) {
+  const index = state.userData.read.indexOf(postId);
+  if (index === -1) return false;
+  state.userData.read.splice(index, 1);
+  storageSet(STORAGE_KEYS.userPrefix + state.user.email, state.userData);
+  enqueue(postId, { read: false });
+  syncNow();
+  refreshBadge();
+  return true;
+}

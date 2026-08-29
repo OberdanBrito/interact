@@ -1,0 +1,107 @@
+# INTERACT - BASE DE CONHECIMENTO DO SISTEMA
+
+## OVERVIEW
+Interact: plataforma de comunicação interna entre empresa e colaboradores.
+Stack: Node.js + Express 5 + MongoDB (Mongoose) + JWT no backend; Vite vanilla JS nos dois frontends.
+
+## FUNCIONALIDADE ÚNICA (LEIA PRIMEIRO)
+A funcionalidade principal do produto é **comunicação unidirecional: empresa → colaborador**.
+A empresa publica comunicados; colaboradores leem. Nada mais. **Exceção parcial:** interações de leitura e curtida do colaborador agora sincronizam de volta ao backend (bidirecional), para o admin ver métricas — mas não há conteúdo enviado pelo colaborador nem conversa.
+
+O que existe:
+- Admin autenticado cria/edita/remove comunicados (com categorias, **grupos-alvo** e modo de leitura).
+- **Segmentação por grupo**: `targetGroups: []` = broadcast; preenchido = exclusivo (união dos grupos). Colaborador vê broadcast + direcionados aos seus grupos; admin vê só o que publicou (`createdBy`).
+- Colaborador autenticado lê o feed (com **ordenação inteligente**: urgentes → não-lidos → recentes), curte e confirma leitura.
+- **Cache offline (Dexie)**: posts ficam disponíveis sem conexão; interações sincronizam ao backend (`PUT /api/interactions/:postId`) com fila offline; admin vê agregados por comunicado (`GET /api/interactions?postId=`) e por usuário (`GET /api/interactions/members`).
+- **Badge de não-lidos** no ícone do app instalado (Badging API, 100% client-side).
+
+O que NÃO existe:
+- Mensagens diretas (DM), chat, conversas, threads, respostas a comunicados.
+- Notificações push de mensagens. Comunicação bidirecional de conteúdo.
+- Verificado na API: `/api/messages`, `/api/chat`, `/api/conversations`, `/api/inbox` → todos 404.
+
+Se um pedido envolver "enviar e receber mensagens", isso é feature NOVA, fora do escopo atual. Sinalize antes de planejar.
+
+## ESTRUTURA
+```
+/home/oberdan/projetos/
+├── backend/          API REST + MongoDB
+├── frontend_admin/   painel administrativo (Vite vanilla JS)
+└── frontend_pwa/     PWA do colaborador (Vite + vite-plugin-pwa)
+```
+`interact/` é cópia duplicada antiga do frontend_pwa. NÃO usar. Os demais diretórios (ramdom, tabler, old, rdp, etc.) não são do Interact.
+
+## COMPONENTES
+
+### backend/
+API REST + MongoDB. Express 5, Mongoose, JWT, bcrypt, CORS.
+- Porta padrão 3001; roda em 3002 via env `PORT`.
+- Rotas: `/api/auth/login`, `/api/posts` (CRUD completo), `/api/categories`, `/api/groups`, `/api/interactions`.
+- Models: `Comunicado`, `User`, `Group`, `Interaction`. Middleware de auth JWT.
+- Scripts: `dev` (node --watch src/server.js), `start`, `seed`, `db:reset` (docker compose down -v && up -d && seed).
+- MongoDB sobe via docker-compose.
+
+### frontend_admin/
+Painel administrativo. Vite vanilla JS. Porta dev 5174. Sem testes.
+- Views: login, lista de posts, formulário de post (criar/editar), modal, toast, grupos, métricas.
+- Features: auth (login-view, session), posts (form-view, list-view), groups (list-view, form-view), analytics (list-view, detail-view), data/posts.js, data/groups.js.
+
+### frontend_pwa/
+PWA do colaborador. Vite + vite-plugin-pwa. Porta dev 5173.
+- Views: login, feed, bottom sheet (detalhe do post), toast, banner de instalação.
+- Features: auth/session, feed (seletor de ambiente, chips de categoria, ordenação inteligente, cards, autoread), interactions (curtir, confirmar leitura), notifications/badge (Badging API), install/pwa.
+- Dados: data/posts.js (API REST), data/cache.js (cache offline Dexie), data/sync.js (fila offline de interações).
+- Scripts: `dev`, `build`, `preview`, `qa` (scripts/qa-pwa.mjs), E2E (scripts/e2e-admin-to-pwa.mjs, e2e-admin-ui-to-pwa.mjs), QA focados (scripts/qa-offline-cache.mjs, qa-offline-collab.mjs, qa-badge-sort.mjs).
+
+## FLUXO DE DADOS
+1. Admin publica comunicado no frontend_admin (com grupos-alvo; modal de confirmação com contagem de destinatários).
+2. `POST /api/posts` → backend grava no MongoDB (`targetGroups`, `createdBy` do token).
+3. Colaborador abre o PWA → `GET /api/posts` (filtrado por visibilidade; `?groupId=X` por ambiente) → feed renderiza (urgentes → não-lidos → recentes). Posts são cacheados no IndexedDB (Dexie) para leitura offline.
+4. Colaborador curte/confirma leitura → grava no localStorage (instantâneo) e sincroniza ao backend (`PUT /api/interactions/:postId`), com fila offline reenviada no evento `online`.
+5. Admin consulta métricas por comunicado (`GET /api/interactions?postId=`) e quem leu/curtiu (`GET /api/interactions/members`).
+Autenticação JWT em ambos os frontends. Nenhum conteúdo flui do colaborador ao admin — apenas métricas de interação.
+
+## ONDE ENCONTRAR
+| Tarefa | Local |
+|---|---|
+| Login/autenticação | `backend` rota `/api/auth/login`; `auth/` nos dois frontends |
+| CRUD de comunicados | `backend` rota `/api/posts`; `frontend_admin` features/posts |
+| Segmentação por grupo | `backend` rotas `/api/groups` + filtro em `/api/posts`; `frontend_admin` features/groups; `frontend_pwa` features/feed (seletor de ambiente) |
+| Feed do colaborador | `frontend_pwa` features/feed |
+| Curtir / confirmar leitura | `frontend_pwa` features/interactions (localStorage + sync ao backend) |
+| Fila offline de interações | `frontend_pwa` data/sync.js |
+| Cache offline de posts (Dexie) | `frontend_pwa` data/cache.js |
+| Badge de não-lidos | `frontend_pwa` features/notifications/badge.js |
+| Métricas de leitura/curtida (admin) | `backend` rota `/api/interactions`; `frontend_admin` features/analytics |
+| Categorias | `backend` rota `/api/categories` (estáticas) |
+| Arquitetura detalhada | `ARCHITECTURE.md` e `DESIGN.md` em cada projeto |
+
+## CONVENÇÕES
+- Interações (curtir, leitura) persistem em localStorage do cliente **e** sincronizam ao backend (fonte de verdade do agregado); fila offline em `interact.syncQueue`.
+- **Segmentação**: `targetGroups: []` = broadcast; preenchido = exclusivo (união). `targetGroups`/`groupIds` guardam `Group._id` como string. Alvo imutável após publicação (400 no PUT). Grupos inativos não podem ser alvo de post novo.
+- **Visibilidade**: colaborador vê broadcast + direcionados aos seus grupos; sem grupo → só broadcast; admin → só o que publicou (`createdBy`). `GET /:id` não elegível → 404 (não 403).
+- **Cache offline**: posts em IndexedDB (`interact-cache`, Dexie); `clearCache` no logout (não vazar entre usuários).
+- **Badge de não-lidos**: Badging API (`navigator.setAppBadge`), no-op gracioso fora de PWA instalado.
+- Categorias estáticas: Geral, RH, TI, Benefícios.
+- `readMode` do Comunicado: `auto` (lido por dwell de 3s ou scroll até o fim) ou `ack` (botão explícito "Confirmar leitura").
+- Docs de arquitetura: ARCHITECTURE.md e DESIGN.md em cada projeto.
+- Commits em português, estilo PLAIN (sem prefixo semântico).
+
+## ANTI-PADRÕES / NÃO EXISTE
+- Mensageria: chat, DM, conversas, threads, respostas a comunicados.
+- Notificações push de mensagens.
+- Comunicação bidirecional (colaborador → empresa).
+- Perfis públicos de colaboradores.
+- Não proponha features dessa lista sem sinalizar que são novas e fora do escopo atual.
+
+## COMANDOS
+| Componente | Dev | Build | Test/QA |
+|---|---|---|---|
+| backend | `npm run dev` | - | `npm run seed`, `npm run db:reset` |
+| frontend_admin | `npm run dev` (:5174) | `npm run build` | sem testes |
+| frontend_pwa | `npm run dev` (:5173) | `npm run build` | `npm run qa`, scripts E2E |
+
+## NOTAS
+- Backend verificado rodando em :3002 (env `PORT`), PWA em :5173, admin em :5174.
+- Usuário de QA do qa-pwa.mjs: admin@interactcorp.com.br (senha senha123).
+- `/home/oberdan/projetos/interact/` é duplicata antiga do frontend_pwa. NÃO editar, NÃO usar como raiz.

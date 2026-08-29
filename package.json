@@ -9,7 +9,8 @@
     "start": "node src/server.js",
     "seed": "node src/db/seed.js",
     "db:reset": "docker compose down -v && docker compose up -d && sleep 5 && npm run seed",
-    "test:integration": "node scripts/qa-i11.mjs"
+    "test:integration": "node scripts/qa-i11.mjs",
+    "qa:i12": "node scripts/qa-i12.mjs"
   },
   "license": "UNLICENSED",
   "dependencies": {

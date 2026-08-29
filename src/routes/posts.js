@@ -50,15 +50,18 @@ async function toPost(doc) {
   };
 }
 
+// Janela de idade que separa comunicados ativos de arquivados (I-12)
+const ARCHIVE_AFTER_DAYS = Number.parseInt(process.env.ARCHIVE_AFTER_DAYS, 10) || 30;
+
 // Escapa metacaracteres para busca literal (equivalente ao ILIKE %...%)
 function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// GET /api/posts — lista todos. Query params: ?category, ?search, ?groupId
+// GET /api/posts — lista todos. Query params: ?category, ?search, ?groupId, ?archive
 router.get("/", async (req, res) => {
   try {
-    const { category, search, groupId } = req.query;
+    const { category, search, groupId, archive } = req.query;
 
     const filter = {};
     const and = [];
@@ -70,6 +73,15 @@ router.get("/", async (req, res) => {
     if (search) {
       const rx = new RegExp(escapeRegExp(search), "i");
       and.push({ $or: [{ title: rx }, { "author.name": rx }] });
+    }
+
+    // Filtro de arquivo (I-12): separa ativos de antigos por idade, só para colaborador.
+    // Admin ignora o parâmetro (continua vendo só o que publicou, sem separação por idade).
+    if (req.user.role !== "admin" && (archive === "active" || archive === "archived")) {
+      const cutoff = new Date(
+        Date.now() - ARCHIVE_AFTER_DAYS * 24 * 60 * 60 * 1000
+      );
+      filter.dateISO = archive === "active" ? { $gte: cutoff } : { $lt: cutoff };
     }
 
     // Visibilidade por grupo (feature segmentação)

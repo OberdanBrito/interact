@@ -23,7 +23,7 @@ implementar e como verificar. Atualize o status ao iniciar/concluir cada item.
 | Baixa | 5 | 0 | 1 | 0 | 0 |
 | — | 0 | 0 | 0 | 1 | 3 |
 
-**Total: 18 issues** (2 Alta — 1 aberta, 1 concluída —, 6 Média — 1 concluída —, 6 Baixa — 5 abertas, 1 concluída —, 1 Adiada, 3 Fora de escopo)
+**Total: 18 issues** (2 Alta — 1 aberta, 1 concluída —, 6 Média — 5 abertas, 1 concluída —, 6 Baixa — 4 abertas, 2 concluídas —, 1 Adiada, 3 Fora de escopo)
 
 ## Vínculo com GitHub
 
@@ -216,11 +216,13 @@ fila funcional deste documento.
 - **Componentes:** `frontend_pwa` (feed.js), `backend` (rota posts — filtro opcional)
 - **Prioridade:** Baixa
 - **Esforço:** S (≤ 1 dia)
-- **Status:** Aberto
+- **Status:** Concluído
+- **Registro:** backend `d024379` + `64f402c` (branch `backend`), frontend_pwa `20cc5db` + `a499a56` (branch `frontend_pwa`). Verificado por teste de integração (Mongo real, 11/11) e validação visual (Playwright :5173). OpenSpec arquivado em `openspec/changes/archive/2026-08-29-arquivo-de-comunicados`.
+- **Decisão:** "antigo" = publicado há ≥ 30 dias (`ARCHIVE_AFTER_DAYS`, env-overridable), corte derivado da idade via `dateISO` — **sem** flag/arquivamento manual; aba/toggle "Ativos | Arquivo" no feed; admin ignora `?archive`; sem parâmetro preserva o comportamento atual; busca satisfeita no nível da API (PWA não tem UI de busca).
 - **Critérios de aceite:**
-  - [ ] Filtro/aba de arquivo lista comunicados antigos sem poluir o feed principal
-  - [ ] Busca e visibilidade funcionam dentro do arquivo
-  - [ ] Sem impacto na ordenação inteligente do feed ativo
+  - [x] Filtro/aba de arquivo lista comunicados antigos sem poluir o feed principal
+  - [x] Busca e visibilidade funcionam dentro do arquivo
+  - [x] Sem impacto na ordenação inteligente do feed ativo
 
 ---
 

@@ -19,6 +19,17 @@ assignees: ""
 - [ ] frontend_admin
 - [ ] frontend_pwa
 
+### Pré-condições de integração entre componentes
+<!-- Preencher se a issue tocar mais de uma componente. Evita spec delta contraditórios
+     (lição I-02): ex. os campos obrigatórios na publicação precisam ser os MESMOS no
+     backend e no admin. Especifique claramente cada pré-condição cruzada. -->
+- [ ] ...
+
+### Comportamento de campos opcionais/vazios
+<!-- Como a UI deve exibir valores ausentes (ex.: autor de um rascunho sem autor).
+     Convenção: vazio ou "—", NUNCA o literal "null"/"undefined" nem data epoch. -->
+- [ ] ...
+
 ### Prioridade
 Alta / Média / Baixa
 
@@ -26,6 +37,9 @@ Alta / Média / Baixa
 S (≤ 1 dia) / M (2-3 dias) / L (1 semana+)
 
 ### Critérios de aceite
+<!-- Definir obrigatoriedade POR AÇÃO, por componente (lição I-02). Ex.: "ao publicar,
+     título, categoria, autor e corpo são obrigatórios; ao salvar rascunho, nenhum".
+     Incluir cenário negativo explícito por componente. -->
 - [ ] ...
 
 ### Definition of done (skill `esteira-implementacao`)

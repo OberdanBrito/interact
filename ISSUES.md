@@ -98,10 +98,12 @@ fila funcional deste documento.
 - **Prioridade:** Média
 - **Esforço:** L (1 semana+)
 - **Status:** Aberto
+- **Decisão/Obrigatoriedade:** anexo é **opcional** (nunca bloqueia criar/salvar rascunho/publicar/agendar); rascunho pode ter anexo.
 - **Critérios de aceite:**
   - [ ] Admin anexa arquivo no formulário; `GET /api/posts/:id` retorna metadados do anexo
   - [ ] PWA exibe anexo com link de download/visualização
-  - [ ] Anexo respeita a visibilidade do comunicado (não vaza para não-alvo)
+  - [ ] Anexo respeita a visibilidade do comunicado (não vaza para não-alvo; sem anexo → vazio, não "null")
+  - [ ] Limites de tamanho/tipo documentados e validados (erro claro no admin)
 
 ### I-04 — Fixar comunicado importante
 - **Descrição:** permitir fixar (pin) um comunicado no topo do feed, independente da ordenação inteligente.
@@ -109,10 +111,12 @@ fila funcional deste documento.
 - **Prioridade:** Média
 - **Esforço:** S (≤ 1 dia)
 - **Status:** Aberto
+- **Decisão/Obrigatoriedade:** pin **opcional** (`pinned: boolean` default false); só faz sentido em publicado — rascunho/agendado sem ação "Fixar"; múltiplos pinned ordenados por recência.
 - **Critérios de aceite:**
   - [ ] Campo `pinned: true` no model; `GET /api/posts` ordena pinned primeiro
-  - [ ] Admin fixa/desfixa pela listagem
+  - [ ] Admin fixa/desfixa pela listagem (publicado); rascunho/agendado sem ação "Fixar"
   - [ ] PWA mostra indicador visual de fixado; pinned vence urgente na ordenação
+  - [ ] Múltiplos pinned ordenados por recência (data desc)
 
 ### I-05 — Validade/expiração automática
 - **Descrição:** permitir definir uma data de validade; ao expirar, o comunicado sai do feed automaticamente (sem delete).
@@ -120,10 +124,12 @@ fila funcional deste documento.
 - **Prioridade:** Baixa
 - **Esforço:** S (≤ 1 dia)
 - **Status:** Aberto
+- **Decisão/Obrigatoriedade:** `expiresAt` **opcional**; expirado = `expiresAt < now`; colaborador NÃO vê, admin vê com selo "Expirado" (reativar = limpar `expiresAt`); interação com I-12 (histórico) a resolver.
 - **Critérios de aceite:**
-  - [ ] Campo `expiresAt` opcional; `GET /api/posts` filtra expirados
-  - [ ] Admin vê indicador "Expirado" na listagem e pode reativar
+  - [ ] Campo `expiresAt` opcional; colaborador não vê expirados; admin vê com selo "Expirado"
+  - [ ] Admin vê indicador "Expirado" na listagem e pode reativar (limpar `expiresAt`)
   - [ ] Expiração não apaga o documento (histórico preservado)
+  - [ ] Sem `expiresAt` → campo vazio na UI (não "null")
 
 ---
 
@@ -158,10 +164,12 @@ fila funcional deste documento.
 - **Prioridade:** Baixa
 - **Esforço:** L (1 semana+)
 - **Status:** Aberto
+- **Decisão/Obrigatoriedade:** e-mail dispara **somente na transição para `published: true`** (publicar agora, publicar rascunho ou liberação de agendado via scheduler I-01); nunca em rascunho; público = mesma regra de visibilidade (broadcast ∪ grupos).
 - **Critérios de aceite:**
   - [ ] Publicação de comunicado dispara e-mail apenas para o público-alvo
   - [ ] Falha de envio não bloqueia a publicação (fila + retry)
   - [ ] E-mail contém título, resumo e link para o PWA
+  - [ ] Agendado dispara e-mail no momento da liberação (não na criação)
 
 ---
 
@@ -195,10 +203,12 @@ fila funcional deste documento.
 - **Prioridade:** Baixa
 - **Esforço:** S (≤ 1 dia)
 - **Status:** Aberto
+- **Contexto atual:** backend JÁ aceita `read: false` em `PUT /api/interactions/:postId`; falta a UI do PWA (reverter + badge + ordenação). Decisão pendente: limpar `readAt` ao reverter? (afeta "quem leu" no admin).
 - **Critérios de aceite:**
   - [ ] Ação "Marcar como não lido" no sheet; post volta para o grupo de não-lidos na ordenação
   - [ ] Estado sincroniza ao backend (`PUT /api/interactions/:postId` com `read: false`)
   - [ ] Badge de não-lidos recontado corretamente
+  - [ ] Métricas "quem leu" do admin refletem a reversão (depende da decisão sobre `readAt`)
 
 ### I-12 — Arquivo/histórico de comunicados antigos
 - **Descrição:** separar comunicados ativos de antigos (ex.: aba "Arquivo" ou filtro por período), hoje tudo aparece na mesma lista.
@@ -217,14 +227,16 @@ fila funcional deste documento.
 
 ### I-13 — Dashboard global de métricas
 - **Descrição:** visão geral no admin com todos os comunicados e indicadores (total, % lido, % curtido, por grupo) — hoje as métricas são por comunicado.
-- **Componentes:** `backend` (rota interactions — endpoint agregado), `frontend_admin` (features/analytics)
+- **Componentes:** `backend` (rota interactions — adicionar filtros ao `summary`), `frontend_admin` (features/analytics)
 - **Prioridade:** Média
 - **Esforço:** M (2-3 dias)
 - **Status:** Aberto
+- **Contexto atual:** endpoint `GET /api/interactions/summary` JÁ EXISTE (`{ [postId]: { reads, likes } }`); falta adicionar filtros de período/grupo e a tela de dashboard. **Não re-implementar o endpoint.**
 - **Critérios de aceite:**
-  - [ ] Endpoint agregado (ex.: `GET /api/interactions/summary`) retorna totais por comunicado/grupo
+  - [ ] `GET /api/interactions/summary` aceita filtros de período (`desde`/`ate`) e `groupId`; retorna totais por comunicado/grupo
   - [ ] Tela de dashboard com cards e ranking de comunicados mais/menos lidos
   - [ ] Filtro por período e por grupo
+  - [ ] Comunicado sem interações renderiza 0 (não "null")
 
 ### I-14 — Recibo de leitura individual em tempo real
 - **Descrição:** hoje o admin vê quem leu/curtiu (agregado por usuário), mas sem atualização em tempo real. Requer polling/SSE no admin.

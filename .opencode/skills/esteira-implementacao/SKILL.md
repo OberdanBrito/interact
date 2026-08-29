@@ -38,6 +38,12 @@ Por componente afetada: `opsx-propose` na worktree respectiva. Gera
 perguntar ao usuário antes de criar o change. Mantém-se 1 change por componente por issue.
 Aplicável também a issues de Infra (deploy/CI/perf/dependências/segurança).
 
+**Consistência entre changes (lição I-02):** quando a issue toca mais de uma componente, os
+spec delta devem ser **confrontados entre si ANTES do apply** — pré-condições cruzadas precisam
+ser idênticas nos dois lados (ex.: os campos obrigatórios na publicação devem ser os mesmos no
+backend e no admin). Se um critério do admin contradiz o spec do backend, resolver com o dono
+na fase de planejamento, não no QA.
+
 ### Fase 3 — Implementação (OpenSpec apply)
 `opsx-apply` implementa task a task a partir de `tasks.md`. Mudanças somente nas worktrees das
 componentes afetadas. Não ampliar escopo além do spec/proposal (reportar se precisar).
@@ -51,6 +57,13 @@ Cobrir o fluxo real do usuário nos dois lados (admin e colaborador) com os nave
 salvar screenshots/evidências em `/tmp/opencode/`. Só seguir se o comportamento confere com o
 especificado.
 
+**Confrontar com TODOS os spec delta da issue, não só da componente sob teste (lição I-02).**
+Ex.: publicar um rascunho no admin deve ser validado contra o que o spec do backend determina.
+Campos nulos/opcionais precisam ser renderizados de forma legível ao usuário (vazio ou "—",
+NUNCA o literal "null" nem datas epoch como 1969-12-31). Divergência spec↔comportamento → parar
+e decidir com o dono; a decisão vira **Decisão** registrada no registro da issue e reflete no
+spec da componente afetada.
+
 ### Fase 6 — Commit/push (portão OBRIGATÓRIO)
 Commit por componente por issue: português, estilo PLAIN, mensagem com id da issue
 (ex.: `Implementa agendamento de publicação (I-01)`). `git push` para `origin/<componente>`,
@@ -59,12 +72,24 @@ incluindo o `openspec/`.
 ### Fase 7 — Archive OpenSpec
 `opsx-archive` move a change aprovada para `openspec/specs/<capability>/`.
 
+**Antes do commit de archive (lição I-02):** converter o spec delta em spec principal usando a
+skill `openspec-sync-specs` (delta usa `## ADDED Requirements`; spec principal exige
+`## Purpose` + `## Requirements` — o formato delta não valida em `openspec validate --specs
+--strict`). Rodar `openspec validate --specs --strict` e conferir `openspec list` (nenhuma
+change ativa restante) como portão, antes do commit.
+
 ### Fase 8 — Encerramento da issue (no GitHub)
 1. **Registrar atividades na issue**: comentário estruturado com resumo, atividades (com datas),
    evidências, decisões e critérios de aceite.
 2. Mover a issue para **Done** no Projects v2 e **fechar** a issue.
 3. Atualizar `ISSUES.md` e `AGENTS.md` na `main` (status, resumo, critérios reescritos se a
    implementação divergiu, conhecimento novo) e `git push origin main`.
+
+**Bloco de decisões (lição I-02):** toda decisão tomada durante a execução que diverja do
+planejado (spec/proposal) — ou que resolva ambiguidade — deve constar como **Decisão** no
+registro de atividades E ser refletida no spec da componente afetada antes do archive. Exemplos
+reais da I-02: gate de publicação ampliado (backend passou a exigir autor+corpo ao publicar
+rascunho) e convenção de não expor "null" na UI.
 
 ### Fase 9 — Memória
 Gravar conceitos/camadas/lacunas no megamemory (record) ao concluir.
@@ -82,6 +107,11 @@ Gravar conceitos/camadas/lacunas no megamemory (record) ao concluir.
 7. Se um portão não foi cumprido: **parar e reportar ao dono**, não "fechar" mesmo assim.
 8. Divergência entre o implementado e o planejado → registrar como **Decisão** na issue e
    reescrever o critério no ISSUES.md.
+9. **Nunca expor o literal "null"/"undefined" (ou datas epoch) na UI** — valores ausentes
+   renderizam como vazio ou "—", para qualquer usuário (admin ou colaborador).
+10. **Confrontar os spec delta entre componentes** antes do apply e no QA (pré-condições
+    cruzadas idênticas); spec principal exige `## Purpose` + `## Requirements` e deve ser
+    validada com `openspec validate --specs --strict` antes do commit de archive.
 
 ## Checklist de verificação do dono (conferir periodicamente)
 
@@ -90,11 +120,14 @@ Cada issue encerrada deve ter:
 - [ ] Status Done no Projects v2 e issue fechada.
 - [ ] Commits com hash nas branches vivas (e `origin/` atualizado).
 - [ ] `ISSUES.md` coerente (status/resumo) e `AGENTS.md` refletindo o conhecimento novo.
-- [ ] Specs aprovadas em `openspec/specs/` (archive feito) nas componentes afetadas.
+- [ ] Specs aprovadas em `openspec/specs/` (archive feito) nas componentes afetadas, validadas com `openspec validate --specs --strict`.
 - [ ] Screenshots/evidências de QA visual (ex.: `/tmp/opencode/`).
+- [ ] Nenhum "null"/"undefined"/data epoch exposto na UI (regra 9).
+- [ ] Decisões da execução registradas como **Decisão** na issue (se houve divergência do planejado).
 
 Causas de reprovação: faltou qualquer evidência acima, issue fechada sem registro de atividades,
-QA visual inexistente, ou código fora do planejamento sem decisão registrada.
+QA visual inexistente, código fora do planejamento sem decisão registrada, ou UI expondo termos
+técnicos de valor nulo.
 
 ## Anti-padrões (proibidos)
 
@@ -102,6 +135,9 @@ QA visual inexistente, ou código fora do planejamento sem decisão registrada.
 - Ampliar escopo silenciosamente (sem spec/proposal e sem decisão do dono).
 - Commit fora da branch viva da componente ou mensagem sem id da issue.
 - "Fechou como concluído" sem evidência (sneak-through).
+- Expor o literal "null"/"undefined" (ou datas epoch) em qualquer tela do produto.
+- Espec delta de componentes diferentes da mesma issue com pré-condições contraditórias,
+  sem resolver antes do apply.
 
 ## Instrução final
 

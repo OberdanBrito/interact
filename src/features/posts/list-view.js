@@ -1,5 +1,5 @@
 import { state } from "../../core/state.js";
-import { CATEGORIES, listPosts, getPost, deletePost } from "../../data/posts.js";
+import { CATEGORIES, listPosts, getPost, deletePost, updatePost } from "../../data/posts.js";
 import { postRowHTML, emptyStateHTML, confirmModalHTML } from "../../ui/templates.js";
 import { $, normalizeText } from "../../core/utils.js";
 import { showToast } from "../../ui/toast.js";
@@ -22,8 +22,13 @@ async function renderRows(root) {
   const table = root.querySelector("#posts-table");
   const count = root.querySelector("#posts-count");
 
+  const draftCount = posts.filter((p) => p.status === "rascunho").length;
   count.textContent =
-    posts.length === 1 ? "1 comunicado" : `${posts.length} comunicados`;
+    draftCount > 0
+      ? `${posts.length} comunicados (${draftCount} rascunho${draftCount > 1 ? "s" : ""})`
+      : posts.length === 1
+        ? "1 comunicado"
+        : `${posts.length} comunicados`;
 
   if (posts.length === 0) {
     table.hidden = true;
@@ -87,6 +92,31 @@ function openConfirmModal(post, root) {
   cancel.focus();
 }
 
+/* Publica um rascunho direto da lista (I-02). Sem modal — escopo enxuto. */
+async function handlePublish(postId, root) {
+  try {
+    await updatePost(postId, { status: "published" });
+    showToast("Rascunho publicado com sucesso");
+  } catch {
+    showToast(
+      "Não foi possível publicar. Edite o rascunho para completar os campos obrigatórios."
+    );
+  }
+  renderRows(root);
+}
+
+async function openPublishOrDelete(event, root) {
+  const publishBtn = event.target.closest(".js-publish");
+  if (publishBtn) {
+    return handlePublish(publishBtn.dataset.postId, root);
+  }
+  const btn = event.target.closest(".js-delete");
+  if (btn) {
+    const post = await getPost(btn.dataset.postId);
+    if (post) openConfirmModal(post, root);
+  }
+}
+
 export function render(root) {
   root.innerHTML = `
     <div class="page-head">
@@ -138,11 +168,8 @@ export function render(root) {
     renderRows(root);
   });
 
-  root.querySelector("#posts-tbody").addEventListener("click", async (event) => {
-    const btn = event.target.closest(".js-delete");
-    if (!btn) return;
-    const post = await getPost(btn.dataset.postId);
-    if (post) openConfirmModal(post, root);
+  root.querySelector("#posts-tbody").addEventListener("click", (event) => {
+    openPublishOrDelete(event, root);
   });
 
   renderRows(root);

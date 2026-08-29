@@ -80,6 +80,10 @@ export function scheduledBadgeHTML() {
   return `<span class="badge badge-scheduled">${icon("i-alert", 12)} Agendado</span>`;
 }
 
+export function draftBadgeHTML() {
+  return `<span class="badge badge-draft">${icon("i-edit", 12)} Rascunho</span>`;
+}
+
 export function readModeLabel(readMode) {
   return readMode === "ack" ? "Confirmação" : "Automática";
 }
@@ -87,12 +91,15 @@ export function readModeLabel(readMode) {
 export function postRowHTML(post) {
   const id = escapeHTML(post.id);
   const title = escapeHTML(post.title);
+  const authorName = escapeHTML(post.author?.name || "—");
+  const authorRole = post.author?.role ? escapeHTML(post.author.role) : "";
   return `
     <tr data-post-id="${id}">
       <td class="cell-post">
         <div class="cell-title">
           <span class="cell-title-text">${title}</span>
           ${post.status === "agendado" ? scheduledBadgeHTML() : ""}
+          ${post.status === "rascunho" ? draftBadgeHTML() : ""}
           ${post.urgent ? urgentBadgeHTML() : ""}
           ${(post.targetGroups || []).length > 0 ? targetedBadgeHTML() : ""}
         </div>
@@ -105,16 +112,24 @@ export function postRowHTML(post) {
       <td>
         <div class="cell-author">
           <span class="avatar avatar-sm" aria-hidden="true">${escapeHTML(
-            initialsOf(post.author.name)
+            initialsOf(post.author?.name || "")
           )}</span>
           <span class="cell-author-text">
-            <strong>${escapeHTML(post.author.name)}</strong>
-            <span>${escapeHTML(post.author.role)}</span>
+            <strong>${authorName}</strong>
+            ${authorRole ? `<span>${authorRole}</span>` : ""}
           </span>
         </div>
       </td>
       <td>
         <div class="cell-actions">
+          ${
+            post.status === "rascunho"
+              ? `<button type="button" class="icon-btn icon-btn-publish js-publish" data-post-id="${id}"
+                    aria-label="Publicar rascunho: ${title}" title="Publicar">
+                  ${icon("i-megaphone")}
+                </button>`
+              : ""
+          }
           <a class="icon-btn" href="#/posts/${id}/editar"
              aria-label="Editar comunicado: ${title}" title="Editar">
             ${icon("i-edit")}

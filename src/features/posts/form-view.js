@@ -38,6 +38,7 @@ function parseBody(text) {
 
 // Converte uma data ISO para o formato do input datetime-local (fuso local)
 function toDatetimeLocal(iso) {
+  if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   const pad = (n) => String(n).padStart(2, "0");
@@ -86,6 +87,8 @@ export async function render(root, { id } = {}) {
     targetGroups: [],
   };
   const selectedGroups = values.targetGroups || [];
+  // Rascunho (I-02): só existe como edição; publicado/agendado não exibe "Salvar rascunho"
+  const isDraft = editing && values.status === "rascunho";
 
   let metricsHTML = "";
   if (editing) {
@@ -226,7 +229,7 @@ export async function render(root, { id } = {}) {
           <label class="field-label" for="f-author-name">Autor — nome</label>
           <input class="input" id="f-author-name" data-field="author-name" type="text"
                  placeholder="Ex.: Marina Duarte"
-                 value="${escapeHTML(values.author.name)}"
+                 value="${escapeHTML(values.author?.name ?? "")}"
                  aria-describedby="${errorId("author-name")}">
           <p class="field-error" id="${errorId("author-name")}" hidden></p>
         </div>
@@ -234,7 +237,7 @@ export async function render(root, { id } = {}) {
           <label class="field-label" for="f-author-role">Autor — cargo</label>
           <input class="input" id="f-author-role" data-field="author-role" type="text"
                  placeholder="Ex.: Comunicação Interna"
-                 value="${escapeHTML(values.author.role)}"
+                 value="${escapeHTML(values.author?.role ?? "")}"
                  aria-describedby="${errorId("author-role")}">
           <p class="field-error" id="${errorId("author-role")}" hidden></p>
         </div>
@@ -253,8 +256,15 @@ export async function render(root, { id } = {}) {
 
       <div class="form-actions">
         <a class="btn btn-ghost" href="#/posts">Cancelar</a>
+        ${
+          editing && !isDraft
+            ? ""
+            : `<button class="btn btn-ghost" id="form-draft" type="button">
+                 <span>Salvar rascunho</span>
+               </button>`
+        }
         <button class="btn btn-primary" id="form-submit" type="submit">
-          <span>${editing ? "Salvar alterações" : "Publicar comunicado"}</span>
+          <span>${editing && !isDraft ? "Salvar alterações" : "Publicar comunicado"}</span>
         </button>
       </div>
     </form>`;
@@ -280,12 +290,16 @@ export async function render(root, { id } = {}) {
     }
   });
 
+  const mainLabel = editing && !isDraft ? "Salvar alterações" : "Publicar comunicado";
+
+  const draftBtn = root.querySelector("#form-draft");
   const setLoading = (loading) => {
     submit.disabled = loading;
     submit.classList.toggle("is-loading", loading);
     submit.innerHTML = loading
       ? spinnerHTML(editing ? "Salvando…" : "Publicando…")
-      : "<span>" + (editing ? "Salvar alterações" : "Publicar comunicado") + "</span>";
+      : `<span>${mainLabel}</span>`;
+    if (draftBtn) draftBtn.disabled = loading;
   };
 
   function closeSendModal() {
@@ -297,7 +311,7 @@ export async function render(root, { id } = {}) {
   }
 
   /* Pequeno delay — mantém o estado de loading perceptível. */
-  function persist(data) {
+  function persist(data, kind = "publish") {
     setLoading(true);
     setTimeout(async () => {
       try {
@@ -307,11 +321,13 @@ export async function render(root, { id } = {}) {
           await createPost(data);
         }
         showToast(
-          !editing && data.publishAt
-            ? "Comunicado agendado com sucesso"
-            : editing
-              ? "Comunicado atualizado com sucesso"
-              : "Comunicado publicado com sucesso"
+          kind === "draft"
+            ? "Rascunho salvo com sucesso"
+            : !editing && data.publishAt
+              ? "Comunicado agendado com sucesso"
+              : editing
+                ? "Comunicado atualizado com sucesso"
+                : "Comunicado publicado com sucesso"
         );
         location.hash = "#/posts";
       } catch (err) {
@@ -360,6 +376,30 @@ export async function render(root, { id } = {}) {
     });
 
     cancel.focus();
+  }
+
+  if (draftBtn) {
+    draftBtn.addEventListener("click", () => {
+      clearErrors(root);
+      // Rascunho (I-02): salva sem exigir campos obrigatórios e sem abrir modal
+      const data = {
+        title: input.title.value.trim(),
+        categoryId: input.category.value,
+        readMode: form.elements["read-mode"].value === "ack" ? "ack" : "auto",
+        urgent: input.urgent.checked,
+        author: {
+          name: input.authorName.value.trim(),
+          role: input.authorRole.value.trim(),
+        },
+        body: parseBody(input.body.value),
+        targetGroups: [
+          ...form.querySelectorAll('input[name="target-groups"]:checked'),
+        ].map((el) => el.value),
+        status: "draft",
+      };
+      if (editing) delete data.targetGroups;
+      persist(data, "draft");
+    });
   }
 
   form.addEventListener("submit", (event) => {
@@ -421,8 +461,16 @@ export async function render(root, { id } = {}) {
     if (editing) {
       /* Alvo imutável — PUT rejeita targetGroups com 400. */
       delete data.targetGroups;
-      /* Comunicado já publicado não pode ser reagendado. */
-      if (values.published !== false) {
+      if (isDraft) {
+        // Rascunho (I-02): publicar agora ou agendar, conforme a data
+        if (data.publishAt && data.publishAt !== "") {
+          data.status = "scheduled";
+        } else {
+          data.status = "published";
+          delete data.publishAt;
+        }
+      } else if (values.published !== false) {
+        /* Comunicado já publicado não pode ser reagendado. */
         delete data.publishAt;
       }
       persist(data);

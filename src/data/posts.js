@@ -19,6 +19,9 @@ export const CATEGORIES = [
 /* Campos de agendamento (I-01):
    publishAt: ISO | null (futuro = agendado), published: boolean,
    status: "publicado" | "agendado" */
+/* Campos de rascunho (I-02):
+   status: "rascunho" — salvo sem publicar, editável com campos incompletos.
+   createPost/updatePost repassam `status` no payload conforme a ação. */
 
 let TOKEN = null;
 

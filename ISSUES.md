@@ -18,12 +18,12 @@ implementar e como verificar. Atualize o status ao iniciar/concluir cada item.
 
 | Prioridade | Aberto | Em andamento | Concluído | Adiado | Fora de escopo |
 |---|---|---|---|---|---|
-| Alta | 2 | 0 | 0 | 0 | 0 |
+| Alta | 1 | 0 | 1 | 0 | 0 |
 | Média | 6 | 0 | 0 | 0 | 0 |
 | Baixa | 6 | 0 | 0 | 0 | 0 |
 | — | 0 | 0 | 0 | 1 | 3 |
 
-**Total: 18 issues** (2 Alta, 6 Média, 6 Baixa, 1 Adiada, 3 Fora de escopo)
+**Total: 18 issues** (2 Alta — 1 aberta, 1 concluída —, 6 Média, 6 Baixa, 1 Adiada, 3 Fora de escopo)
 
 ## Vínculo com GitHub
 
@@ -52,20 +52,32 @@ mantém o contexto completo (descrição, componentes, critérios de aceite).
 
 Labels usadas: `prioridade: alta|media|baixa`, `area: publicacao|entrega|leitura|metricas`, `adiado`.
 
+### Melhorias de plataforma (Projeto "Infra")
+
+Issues de infraestrutura, CI/CD, performance, dependências e segurança ficam no
+projeto **Infra** (Projects v2 #10, [board](https://github.com/users/OberdanBrito/projects/10)) — não na
+fila funcional deste documento.
+
+| Issue | GitHub | Projeto |
+|---|---|---|
+| Deploy de produção (CI/CD, PM2/Docker/systemd, secrets, HTTPS, backup) | [#16](https://github.com/OberdanBrito/interact/issues/16) | Infra (#10) |
+
 ---
 
 ## Publicação
 
 ### I-01 — Agendamento de publicação
-- **Descrição:** permitir que o admin defina uma data/hora futura para o comunicado ir ao ar. Até lá, o post fica invisível para colaboradores (e para o próprio admin na listagem pública).
-- **Componentes:** `backend` (model Comunicado + rota posts), `frontend_admin` (form-view)
+- **Descrição:** permitir que o admin defina uma data/hora futura para o comunicado ir ao ar. Até lá, o post fica visível apenas para o admin (indicador "Agendado"); colaboradores só o veem após a liberação.
+- **Componentes:** `backend` (model Comunicado + scheduler + rota posts), `frontend_admin` (form-view, listagem)
 - **Prioridade:** Alta
 - **Esforço:** M (2-3 dias)
-- **Status:** Aberto
+- **Status:** Concluído
+- **Registro:** backend `b49ebf5` (branch `backend`), frontend_admin `6ac971b` (branch `frontend_admin`). Verificado por teste de integração (Mongo real) e validação visual (Playwright/Chrome DevTools); scheduler libera o post no horário definido sem ação manual.
+- **Decisão:** mecanismo único `node-schedule` (one-shot + reconcile a cada minuto). Admin vê agendados na própria listagem com selo "Agendado" e pode reagendar até a liberação.
 - **Critérios de aceite:**
-  - [ ] `POST /api/posts` aceita `publishAt`; posts com `publishAt` futuro não aparecem em `GET /api/posts` (nem para admin)
-  - [ ] Formulário do admin tem campo de data/hora opcional; comunicado agendado aparece com indicador "Agendado" na listagem
-  - [ ] Ao chegar a data, o post aparece no feed sem ação manual
+  - [x] `POST /api/posts` aceita `publishAt`; posts com `publishAt` futuro ficam `published:false` e não aparecem para colaboradores
+  - [x] Formulário do admin tem campo de data/hora opcional; comunicado agendado aparece com indicador "Agendado" na listagem
+  - [x] Ao chegar a data, o post aparece no feed sem ação manual
 
 ### I-02 — Rascunhos
 - **Descrição:** permitir salvar um comunicado incompleto sem publicar. Rascunho visível apenas para o admin que o criou.

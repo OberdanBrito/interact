@@ -23,13 +23,21 @@ O que NÃO existe:
 Se um pedido envolver "enviar e receber mensagens", isso é feature NOVA, fora do escopo atual. Sinalize antes de planejar.
 
 ## ESTRUTURA
+O repositório é **branch-based**: `main` contém só documentação/estado do
+projeto; o código vive em **branches vivas por componente**, extraídas como
+worktrees dentro de `/home/oberdan/WebstormProjects/interact/`:
+
 ```
-/home/oberdan/projetos/
-├── backend/          API REST + MongoDB
-├── frontend_admin/   painel administrativo (Vite vanilla JS)
-└── frontend_pwa/     PWA do colaborador (Vite + vite-plugin-pwa)
+interact/                      (main – docs: AGENTS.md, ISSUES.md, README.md)
+├── backend/           branch viva `backend`      API REST + MongoDB (Express 5, Mongoose, JWT)
+├── frontend_admin/    branch viva `frontend_admin`  painel administrativo (Vite vanilla JS)
+└── frontend_pwa/      branch viva `frontend_pwa`    PWA do colaborador (Vite + vite-plugin-pwa)
 ```
-`interact/` é cópia duplicada antiga do frontend_pwa. NÃO usar. Os demais diretórios (ramdom, tabler, old, rdp, etc.) não são do Interact.
+
+Cada worktree está na sua branch viva com tracking de `origin/<branch>` (não é
+detached HEAD). Commits de todas as issues acumulam na branch da componente; o
+`.git` da `main` lista `?? backend/` etc. como não-rastreadas — é esperado.
+`/home/oberdan/projetos/interact/` é duplicata antiga do frontend_pwa. NÃO usar.
 
 ## COMPONENTES
 
@@ -52,6 +60,19 @@ PWA do colaborador. Vite + vite-plugin-pwa. Porta dev 5173.
 - Features: auth/session, feed (seletor de ambiente, chips de categoria, ordenação inteligente, cards, autoread), interactions (curtir, confirmar leitura), notifications/badge (Badging API), install/pwa.
 - Dados: data/posts.js (API REST), data/cache.js (cache offline Dexie), data/sync.js (fila offline de interações).
 - Scripts: `dev`, `build`, `preview`, `qa` (scripts/qa-pwa.mjs), E2E (scripts/e2e-admin-to-pwa.mjs, e2e-admin-ui-to-pwa.mjs), QA focados (scripts/qa-offline-cache.mjs, qa-offline-collab.mjs, qa-badge-sort.mjs).
+
+## FLUXO DE TRABALHO
+Por issue funcional (I-01…I-15, projetos v2 #8):
+1. **Contexto** — consultar o knowledge graph (megamemory) e usar o status do GitHub (Projects v2) como fonte de verdade.
+2. **Implementação** — mudanças apenas nas worktrees das componentes afetadas (`backend/`, `frontend_admin/`, `frontend_pwa/`), cada uma na sua branch viva.
+3. **Teste** — integração no MongoDB real (docker) + `npm run build`/`node --check`.
+4. **Validação visual (obrigatória)** — navegadores MCP (Playwright `:5173`/admin `:5174`) cobrindo o fluxo real; screenshots em `/tmp/opencode/`.
+5. **Commit/push** — em português, estilo PLAIN, mensagem com id da issue (ex.: `Implementa agendamento de publicação (I-01)`); `git push` para `origin/<componente>`.
+6. **Encerramento** — no GitHub: issue/projeto Todos→Done; depois atualizar `ISSUES.md` e este `AGENTS.md` na `main` e push.
+7. **Memória** — gravar conceitos no megamemory (record) ao concluir.
+
+Melhorias de plataforma (CI/CD, performance, dependências, segurança, deploy)
+entram como issues do projeto **Infra** (Projects v2 #10), não na fila funcional.
 
 ## FLUXO DE DADOS
 1. Admin publica comunicado no frontend_admin (com grupos-alvo; modal de confirmação com contagem de destinatários).
@@ -102,6 +123,7 @@ Autenticação JWT em ambos os frontends. Nenhum conteúdo flui do colaborador a
 | frontend_pwa | `npm run dev` (:5173) | `npm run build` | `npm run qa`, scripts E2E |
 
 ## NOTAS
-- Backend verificado rodando em :3002 (env `PORT`), PWA em :5173, admin em :5174.
-- Usuário de QA do qa-pwa.mjs: admin@interactcorp.com.br (senha senha123).
+- Ambiente dev local: backend :3002 (env `PORT`, log `/tmp/interact-api.log`), PWA :5173 (`/tmp/interact-pwa.log`), admin :5174 (`/tmp/interact-admin.log`); dev servers via `npm run dev -- --port <X> --strictPort`.
+- QA visual: MCP `playwright` (`/usr/local/bin/playwright-mcp`, browser chromium no cache ms-playwright) e MCP `chrome-devtools` (`npx chrome-devtools-mcp@latest`, usa google-chrome do sistema), configurados no `opencode.json` global.
+- Usuário de QA do qa-pwa.mjs: admin@interactcorp.com.br (senha senha123); colaborador de QA: colaborador.operacoes@interactcorp.com.br (senha senha123).
 - `/home/oberdan/projetos/interact/` é duplicata antiga do frontend_pwa. NÃO editar, NÃO usar como raiz.

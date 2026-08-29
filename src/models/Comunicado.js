@@ -13,7 +13,7 @@ const comunicadoSchema = new mongoose.Schema(
     },
     categoryId: {
       type: String,
-      required: true,
+      default: "geral",
     },
     urgent: {
       type: Boolean,
@@ -25,7 +25,7 @@ const comunicadoSchema = new mongoose.Schema(
     },
     title: {
       type: String,
-      required: true,
+      default: "",
     },
     body: {
       type: [String],
@@ -50,6 +50,11 @@ const comunicadoSchema = new mongoose.Schema(
     published: {
       type: Boolean,
       default: true,
+    },
+    // Rascunho (I-02): salvo sem publicar, editável com campos incompletos
+    draft: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }

@@ -14,7 +14,8 @@ router.use(auth);
 // Adapta formato para espelhar o schema do frontend
 async function toPost(doc) {
   const targetGroups = doc.targetGroups ?? [];
-  const published = doc.published !== false;
+  // Rascunho nunca é publicado (invariante D1)
+  const published = doc.draft === true ? false : doc.published !== false;
 
   // Resolve nomes dos grupos-alvo na mesma ordem de targetGroups
   // (inclui grupos inativos — comunicados antigos continuam mostrando nomes)
@@ -44,7 +45,7 @@ async function toPost(doc) {
     createdBy: doc.createdBy ? String(doc.createdBy) : null,
     targetGroupNames,
     published,
-    status: published ? "publicado" : "agendado",
+    status: doc.draft === true ? "rascunho" : published ? "publicado" : "agendado",
     publishAt: doc.publishAt ? new Date(doc.publishAt).toISOString() : null,
   };
 }
@@ -143,10 +144,22 @@ router.get("/:id", async (req, res) => {
 
 // POST /api/posts — cria comunicado (somente admin)
 router.post("/", requireAdmin, async (req, res) => {
-  const { readMode, categoryId, urgent, title, body, author, targetGroups, publishAt } =
-    req.body;
+  const {
+    readMode,
+    categoryId,
+    urgent,
+    title,
+    body,
+    author,
+    targetGroups,
+    publishAt,
+    status,
+  } = req.body;
 
-  if (!title || !categoryId) {
+  // Rascunho (I-02): criado sem publicar, com validação relaxada e sem data de liberação
+  const isDraft = status === "draft" || req.body.draft === true;
+
+  if (!isDraft && (!title || !categoryId)) {
     return res
       .status(400)
       .json({ error: "Título e categoria são obrigatórios" });
@@ -178,9 +191,9 @@ router.post("/", requireAdmin, async (req, res) => {
     groups = targetGroups;
   }
 
-  // Valida agendamento (opcional) — só data futura
+  // Valida agendamento (opcional) — só data futura. Rascunho nunca agenda.
   let scheduledAt = null;
-  if (publishAt && publishAt !== "") {
+  if (!isDraft && publishAt && publishAt !== "") {
     const candidate = new Date(publishAt);
     if (Number.isNaN(candidate.getTime())) {
       return res.status(400).json({ error: "Data de agendamento inválida" });
@@ -219,8 +232,9 @@ router.post("/", requireAdmin, async (req, res) => {
       createdBy: req.user.id, // sempre do token, nunca do body
       // Agendado: dataISO = publishAt para posicionar o post na ordem correta do feed
       dateISO: scheduledAt || new Date(),
-      publishAt: scheduledAt,
-      published: !scheduledAt,
+      publishAt: isDraft ? null : scheduledAt,
+      published: !isDraft && !scheduledAt,
+      draft: isDraft,
     });
 
     if (scheduledAt) {
@@ -236,15 +250,21 @@ router.post("/", requireAdmin, async (req, res) => {
 
 // PUT /api/posts/:id — edita comunicado (somente admin, body parcial)
 router.put("/:id", requireAdmin, async (req, res) => {
-  const { readMode, categoryId, urgent, title, body, author, targetGroups, publishAt } =
-    req.body;
+  const {
+    readMode,
+    categoryId,
+    urgent,
+    title,
+    body,
+    author,
+    targetGroups,
+    publishAt,
+    status,
+  } = req.body;
 
-  // Alvo é imutável após publicação
-  if (targetGroups !== undefined) {
-    return res
-      .status(400)
-      .json({ error: "Alvo não pode ser alterado após publicação" });
-  }
+  // Transições de estado (I-02)
+  const toDraft = status === "draft";
+  const toPublish = status === "published";
 
   try {
     const doc = await Comunicado.findById(req.params.id);
@@ -253,8 +273,84 @@ router.put("/:id", requireAdmin, async (req, res) => {
       return res.status(404).json({ error: "Comunicado não encontrado" });
     }
 
+    // Comunicado já publicado não pode voltar a rascunho (imutabilidade pós-liberação)
+    if (toDraft && doc.published === true) {
+      return res
+        .status(400)
+        .json({ error: "Não é possível transformar um comunicado publicado em rascunho" });
+    }
+
+    // Publicar rascunho exige os campos obrigatórios (valor efetivo: payload ou já salvo)
+    const effectiveTitle = title !== undefined ? title : doc.title;
+    const effectiveCategory = categoryId !== undefined ? categoryId : doc.categoryId;
+    const effectiveAuthorName =
+      author?.name !== undefined ? author.name : doc.author?.name;
+    const effectiveBody = body !== undefined ? body : doc.body;
+    if (
+      toPublish &&
+      (!effectiveTitle ||
+        !effectiveCategory ||
+        !effectiveAuthorName ||
+        !effectiveBody ||
+        effectiveBody.length === 0)
+    ) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "Título, categoria, autor e conteúdo são obrigatórios para publicar",
+        });
+    }
+
+    // Alvo é imutável APÓS a publicação; rascunho/agendado ainda pode editar (D4)
+    if (targetGroups !== undefined) {
+      if (doc.published === true) {
+        return res
+          .status(400)
+          .json({ error: "Alvo não pode ser alterado após publicação" });
+      }
+      if (
+        !Array.isArray(targetGroups) ||
+        !targetGroups.every(
+          (g) => typeof g === "string" && mongoose.isValidObjectId(g)
+        )
+      ) {
+        return res.status(400).json({ error: "Grupo-alvo inválido ou inativo" });
+      }
+      if (targetGroups.length > 0) {
+        const found = await Group.find({
+          _id: { $in: targetGroups },
+          active: true,
+        }).lean();
+        if (found.length !== new Set(targetGroups).size) {
+          return res
+            .status(400)
+            .json({ error: "Grupo-alvo inválido ou inativo" });
+        }
+      }
+      doc.targetGroups = targetGroups;
+    }
+
+    // Transição para rascunho: sem data de liberação, não publicado (invariante D1)
+    if (toDraft) {
+      doc.draft = true;
+      doc.published = false;
+      doc.publishAt = null;
+      cancelPublish(doc._id);
+      if (!doc.dateISO) doc.dateISO = new Date();
+    }
+
+    // Transição para publicado imediato
+    if (toPublish) {
+      doc.draft = false;
+      doc.published = true;
+      doc.publishAt = null;
+      cancelPublish(doc._id);
+      doc.dateISO = new Date();
+    }
+
     // Agendamento só pode ser alterado ANTES da liberação
-    if (publishAt !== undefined) {
+    if (publishAt !== undefined && !toDraft) {
       if (doc.published === true) {
         return res
           .status(400)
@@ -262,6 +358,7 @@ router.put("/:id", requireAdmin, async (req, res) => {
       }
       if (publishAt === "" || publishAt === null) {
         // Limpar a data = publicar agora
+        doc.draft = false;
         doc.publishAt = null;
         doc.published = true;
         doc.dateISO = new Date();
@@ -280,6 +377,7 @@ router.put("/:id", requireAdmin, async (req, res) => {
         cancelPublish(doc._id);
         doc.publishAt = candidate;
         doc.dateISO = candidate;
+        doc.draft = false;
       }
     }
 
@@ -295,7 +393,7 @@ router.put("/:id", requireAdmin, async (req, res) => {
 
     await doc.save();
 
-    // Reagendado → re-agenda a nova data
+    // Agendado (não-publicado com data futura) → re-agenda a nova data
     if (!doc.published && doc.publishAt) {
       schedulePublish(doc);
     }

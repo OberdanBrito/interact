@@ -3,6 +3,7 @@ import { STORAGE_KEYS, storageGet, storageSet } from "../../core/utils.js";
 import { login as apiLogin, setToken, fetchMyInteractions } from "../../data/posts.js";
 import { enqueue, syncNow } from "../../data/sync.js";
 import { clearCache } from "../../data/cache.js";
+import { refreshBadge, clearBadge } from "../notifications/badge.js";
 
 export function getCurrentUser() {
   return state.user;
@@ -66,6 +67,7 @@ export function logout() {
     /* armazenamento indisponível */
   }
   clearCache(); // não vazar posts cacheados entre usuários
+  clearBadge();
   state.user = null;
   state.userData = { likes: [], read: [] };
 }
@@ -92,6 +94,7 @@ export function markReadPersist(postId) {
     storageSet(STORAGE_KEYS.userPrefix + state.user.email, state.userData);
     enqueue(postId, { read: true });
     syncNow();
+    refreshBadge();
   }
   return wasUnread;
 }

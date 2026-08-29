@@ -68,22 +68,24 @@ export async function getPosts(groupId) {
   }
 }
 
-// Filtra os posts cacheados replicando a regra de visibilidade do backend:
-// broadcast (targetGroups vazio) sempre visível; direcionado só se incluir
-// um dos grupos do usuário (ou o grupo específico solicitado).
+// Regra de visibilidade replicada do backend: admin vê tudo; colaborador
+// vê broadcast (targetGroups vazio) + direcionados aos seus grupos.
+export function isPostVisibleToUser(post) {
+  if (state.user?.role === "admin") return true;
+  const targets = post.targetGroups || [];
+  if (targets.length === 0) return true;
+  return targets.some((g) => (state.user?.groupIds || []).includes(g));
+}
+
 async function filterCachedByGroup(groupId) {
   const cached = await getCachedPosts();
   if (cached.length === 0) return [];
-  if (state.user?.role === "admin") {
-    CACHE = cached;
-    return cached;
-  }
-  const myGroupIds = state.user?.groupIds || [];
   const visible = cached.filter((post) => {
+    if (!isPostVisibleToUser(post)) return false;
     const targets = post.targetGroups || [];
     if (targets.length === 0) return true; // broadcast
     if (groupId && groupId !== "todas") return targets.includes(groupId);
-    return targets.some((g) => myGroupIds.includes(g));
+    return true;
   });
   CACHE = visible;
   return visible;

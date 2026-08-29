@@ -2,6 +2,7 @@ import { state } from "../../core/state.js";
 import { $, STORAGE_KEYS, storageGet, storageSet } from "../../core/utils.js";
 import { getCategories, getPosts, getUserGroups } from "../../data/posts.js";
 import { getUserData } from "../auth/session.js";
+import { refreshBadge } from "../notifications/badge.js";
 import { postCardHTML } from "./templates.js";
 
 const ALL_GROUPS_ID = "todas";
@@ -63,10 +64,25 @@ export function renderEnvSelector() {
   }
 }
 
+// Ordenação inteligente: urgentes primeiro, depois não-lidos, depois mais recentes.
+function sortFeed(posts) {
+  const userData = getUserData();
+  return [...posts].sort((a, b) => {
+    if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
+    const aUnread = !userData.read.includes(a.id);
+    const bUnread = !userData.read.includes(b.id);
+    if (aUnread !== bUnread) return aUnread ? -1 : 1;
+    const aTime = new Date(a.dateISO || 0).getTime();
+    const bTime = new Date(b.dateISO || 0).getTime();
+    return bTime - aTime;
+  });
+}
+
 async function visiblePosts() {
   const posts = await getPosts(state.activeGroupId);
-  if (state.filter === "todas") return posts;
-  return posts.filter((post) => post.categoryId === state.filter);
+  const filtered =
+    state.filter === "todas" ? posts : posts.filter((post) => post.categoryId === state.filter);
+  return sortFeed(filtered);
 }
 
 export function renderChips() {
@@ -103,4 +119,6 @@ export async function renderFeed() {
       })
     )
     .join("");
+
+  refreshBadge();
 }

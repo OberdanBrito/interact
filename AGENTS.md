@@ -62,6 +62,11 @@ PWA do colaborador. Vite + vite-plugin-pwa. Porta dev 5173.
 - Scripts: `dev`, `build`, `preview`, `qa` (scripts/qa-pwa.mjs), E2E (scripts/e2e-admin-to-pwa.mjs, e2e-admin-ui-to-pwa.mjs), QA focados (scripts/qa-offline-cache.mjs, qa-offline-collab.mjs, qa-badge-sort.mjs).
 
 ## FLUXO DE TRABALHO
+> **Obrigatório para todas as issues**: siga estritamente a skill da esteira de implementação
+> (`~/.config/opencode/skills/esteira-implementacao/SKILL.md`). Requisito gravado também em todas
+> as issues em aberto. A conformidade é verificada periodicamente pelo desenvolvedor dono do
+> projeto — nenhum portão pode ser pulado, e desvios devem ser reportados.
+
 Por issue funcional (I-01…I-15, projetos v2 #8):
 1. **Contexto** — consultar o knowledge graph (megamemory) e usar o status do GitHub (Projects v2) como fonte de verdade.
 2. **Planejamento (OpenSpec)** — por componente afetada, rodar `opsx-propose` na sua worktree (`openspec/`). Gera `proposal.md`, `specs/<capability>/spec.md` (delta — critérios de aceite da issue), `design.md` e `tasks.md`. **Nada de código antes disso** (boundary de planejamento).

@@ -19,11 +19,11 @@ implementar e como verificar. Atualize o status ao iniciar/concluir cada item.
 | Prioridade | Aberto | Em andamento | Concluído | Adiado | Fora de escopo |
 |---|---|---|---|---|---|
 | Alta | 1 | 0 | 1 | 0 | 0 |
-| Média | 6 | 0 | 0 | 0 | 0 |
+| Média | 5 | 0 | 1 | 0 | 0 |
 | Baixa | 6 | 0 | 0 | 0 | 0 |
 | — | 0 | 0 | 0 | 1 | 3 |
 
-**Total: 18 issues** (2 Alta — 1 aberta, 1 concluída —, 6 Média, 6 Baixa, 1 Adiada, 3 Fora de escopo)
+**Total: 18 issues** (2 Alta — 1 aberta, 1 concluída —, 6 Média — 1 concluída —, 6 Baixa, 1 Adiada, 3 Fora de escopo)
 
 ## Vínculo com GitHub
 
@@ -84,11 +84,13 @@ fila funcional deste documento.
 - **Componentes:** `backend` (model Comunicado + rota posts), `frontend_admin` (form-view, list-view)
 - **Prioridade:** Média
 - **Esforço:** M (2-3 dias)
-- **Status:** Aberto
+- **Status:** Concluído
+- **Registro:** backend `0a9e3b0` + `46e454c` (branch `backend`), frontend_admin `dbb22fd` + `36418a0` (branch `frontend_admin`), frontend_pwa `3be8ce2` (branch `frontend_pwa`). Verificado por teste de integração (Mongo real, 26/26) e validação visual (Playwright :5174). OpenSpec arquivado em `openspec/changes/archive/2026-08-29-rascunhos-comunicados`.
+- **Decisão:** modelagem por flag `draft: Boolean` (estado derivado, compatível com scheduler/GET/PWA). Gate de publicação exige título, categoria, autor e conteúdo ao publicar um rascunho (decisão do dono no QA). Termo "null" eliminado das telas (autor/agendamento mostram vazio ou "—").
 - **Critérios de aceite:**
-  - [ ] `POST /api/posts` aceita `status: "draft"`; drafts não aparecem para colaboradores
-  - [ ] Listagem do admin separa/identifica rascunhos; botão "Publicar" converte draft em publicado
-  - [ ] Edição de draft não exige todos os campos obrigatórios
+  - [x] `POST /api/posts` aceita `status: "draft"`; drafts não aparecem para colaboradores
+  - [x] Listagem do admin identifica rascunhos (selo + contador); botão "Publicar" converte draft em publicado
+  - [x] Edição de draft não exige todos os campos obrigatórios
 
 ### I-03 — Anexos e imagens
 - **Descrição:** permitir anexar arquivos/imagens ao comunicado (ex.: PDF, foto). Requer armazenamento (local via multer ou bucket) e renderização no PWA.

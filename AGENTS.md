@@ -9,7 +9,7 @@ A funcionalidade principal do produto é **comunicação unidirecional: empresa 
 A empresa publica comunicados; colaboradores leem. Nada mais. **Exceção parcial:** interações de leitura e curtida do colaborador agora sincronizam de volta ao backend (bidirecional), para o admin ver métricas — mas não há conteúdo enviado pelo colaborador nem conversa.
 
 O que existe:
-- Admin autenticado cria/edita/remove comunicados (com categorias, **grupos-alvo** e modo de leitura).
+- Admin autenticado cria/edita/remove comunicados (com categorias, **grupos-alvo** e modo de leitura). Pode salvar **rascunho** (`status: "draft"`, campo `draft: true` no model) com campos incompletos — só o admin que o criou vê; publicar rascunho exige título, categoria, autor e conteúdo.
 - **Segmentação por grupo**: `targetGroups: []` = broadcast; preenchido = exclusivo (união dos grupos). Colaborador vê broadcast + direcionados aos seus grupos; admin vê só o que publicou (`createdBy`).
 - Colaborador autenticado lê o feed (com **ordenação inteligente**: urgentes → não-lidos → recentes), curte e confirma leitura.
 - **Cache offline (Dexie)**: posts ficam disponíveis sem conexão; interações sincronizam ao backend (`PUT /api/interactions/:postId`) com fila offline; admin vê agregados por comunicado (`GET /api/interactions?postId=`) e por usuário (`GET /api/interactions/members`).
@@ -111,7 +111,8 @@ Autenticação JWT em ambos os frontends. Nenhum conteúdo flui do colaborador a
 
 ## CONVENÇÕES
 - Interações (curtir, leitura) persistem em localStorage do cliente **e** sincronizam ao backend (fonte de verdade do agregado); fila offline em `interact.syncQueue`.
-- **Segmentação**: `targetGroups: []` = broadcast; preenchido = exclusivo (união). `targetGroups`/`groupIds` guardam `Group._id` como string. Alvo imutável após publicação (400 no PUT). Grupos inativos não podem ser alvo de post novo.
+- **Segmentação**: `targetGroups: []` = broadcast; preenchido = exclusivo (união). `targetGroups`/`groupIds` guardam `Group._id` como string. Alvo imutável APÓS publicação (400 no PUT); rascunho/agendado (`published === false`) ainda pode editá-lo.
+- **Rascunhos (I-02)**: estado derivado no model — `draft === true` ⇒ `published: false` e `publishAt: null`; `toPost` reporta `status: "rascunho"`. `title`/`categoryId` não são mais `required` no schema (defaults `""`/`"geral"`); a obrigatoriedade é validada na rota apenas para não-rascunho. Publicar rascunho (`status: "published"` no PUT) exige título, categoria, autor (nome) e corpo não vazio (valores efetivos payload|doc). Rascunho invisível ao colaborador (filtro `published: true` no GET).
 - **Visibilidade**: colaborador vê broadcast + direcionados aos seus grupos; sem grupo → só broadcast; admin → só o que publicou (`createdBy`). `GET /:id` não elegível → 404 (não 403).
 - **Cache offline**: posts em IndexedDB (`interact-cache`, Dexie); `clearCache` no logout (não vazar entre usuários).
 - **Badge de não-lidos**: Badging API (`navigator.setAppBadge`), no-op gracioso fora de PWA instalado.

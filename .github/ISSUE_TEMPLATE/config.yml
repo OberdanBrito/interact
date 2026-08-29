@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: README / guia do projeto
+    url: https://github.com/OberdanBrito/interact/blob/main/README.md
+    about: Contexto e guias antes de abrir uma issue

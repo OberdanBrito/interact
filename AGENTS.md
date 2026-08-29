@@ -70,7 +70,7 @@ Por issue funcional (I-01…I-15, projetos v2 #8):
 5. **Validação visual (obrigatória)** — navegadores MCP (Playwright `:5173`/admin `:5174`) cobrindo o fluxo real; screenshots em `/tmp/opencode/`.
 6. **Push** — `git push` para `origin/<componente>`, incluindo o `openspec/`.
 7. **Archive (OpenSpec)** — `opsx-archive` move a change aprovada para `openspec/specs/`.
-8. **Encerramento** — no GitHub: projetos v2 Todos→Done; depois atualizar `ISSUES.md` e este `AGENTS.md` na `main` e push.
+8. **Encerramento** — no GitHub: registrar **atividades na issue** (comentário estruturado com resumo, atividades com datas, evidências, decisões e critérios de aceite), mover a issue pro-v2 Todos→Done e fechá-la; depois atualizar `ISSUES.md` e este `AGENTS.md` na `main` e push.
 9. **Memória** — gravar conceitos no megamemory (record) ao concluir.
 
 OpenSpec está configurado nas 3 componentes (`openspec/config.yaml` schema

@@ -260,6 +260,6 @@ fila funcional deste documento.
 ## Instruções de uso
 
 1. Ao **iniciar** uma implementação: marque a issue como `Em andamento` e anote a data.
-2. Ao **concluir**: marque `Concluído`, rode os critérios de aceite e registre o commit/branch.
+2. Ao **concluir**: rode os critérios de aceite, **registre as atividades na issue do GitHub** (comentário estruturado: resumo, atividades com datas, evidências, decisões e critérios de aceite — exemplo na issue #1 da I-01), mova-a para `Concluído`/Done e anote o commit/branch.
 3. Ao **descartar**: mova para `Fora de escopo` com o motivo, ou `Adiado` com a condição de retomada.
 4. Issues novas devem seguir o formato: ID sequencial, descrição, componentes, prioridade, esforço, status, critérios de aceite.

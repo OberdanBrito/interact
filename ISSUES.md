@@ -19,11 +19,11 @@ implementar e como verificar. Atualize o status ao iniciar/concluir cada item.
 | Prioridade | Aberto | Em andamento | Concluído | Adiado | Fora de escopo |
 |---|---|---|---|---|---|
 | Alta | 1 | 0 | 1 | 0 | 0 |
-| Média | 5 | 0 | 1 | 0 | 0 |
+| Média | 4 | 0 | 2 | 0 | 0 |
 | Baixa | 5 | 0 | 1 | 0 | 0 |
 | — | 0 | 0 | 0 | 1 | 3 |
 
-**Total: 18 issues** (2 Alta — 1 aberta, 1 concluída —, 6 Média — 5 abertas, 1 concluída —, 6 Baixa — 4 abertas, 2 concluídas —, 1 Adiada, 3 Fora de escopo)
+**Total: 18 issues** (2 Alta — 1 aberta, 1 concluída —, 6 Média — 4 abertas, 2 concluídas —, 6 Baixa — 4 abertas, 2 concluídas —, 1 Adiada, 3 Fora de escopo)
 
 ## Vínculo com GitHub
 
@@ -110,13 +110,14 @@ fila funcional deste documento.
 - **Componentes:** `backend` (model Comunicado + rota posts), `frontend_admin` (list-view), `frontend_pwa` (feed.js sortFeed)
 - **Prioridade:** Média
 - **Esforço:** S (≤ 1 dia)
-- **Status:** Aberto
-- **Decisão/Obrigatoriedade:** pin **opcional** (`pinned: boolean` default false); só faz sentido em publicado — rascunho/agendado sem ação "Fixar"; múltiplos pinned ordenados por recência.
+- **Status:** Concluída (30/08)
+- **Decisões/Obrigatoriedade:** pin **opcional** (`pinned: boolean` default false); **D1** pin SÓ em publicados — `PUT /api/posts/:id` com `pinned` em rascunho/agendado → 400 "Apenas comunicados publicados podem ser fixados" e o admin não exibe a ação para não-publicados; **D2** pin é ação pós-publicação (`POST` não aceita `pinned`; toggle na listagem); **D3** múltiplos pinned ordenados por recência (`dateISO` desc); pin não reordena a listagem do admin nem a visão "Arquivo" do PWA (mantém data desc da I-12); selo aparece nas duas visões.
+- **Resultado:** model `pinned` + `toPost` expõe; `GET /api/posts` `.sort({pinned:-1, dateISO:-1})`; selo "Fixado" e toggle Fixar/Desfixar no admin (só publicado); selo "Fixado" no card + `sortFeed` pin-primeiro (vence urgente) no PWA. Teste versionado `scripts/qa-i04.mjs` 19/19; QA visual PWA+admin ok. Commits: backend `33433e0`, admin `141b609`, pwa `5d5e589` (+ archive `406c289`/`a8c6b27`/`ce35b5d`).
 - **Critérios de aceite:**
-  - [ ] Campo `pinned: true` no model; `GET /api/posts` ordena pinned primeiro
-  - [ ] Admin fixa/desfixa pela listagem (publicado); rascunho/agendado sem ação "Fixar"
-  - [ ] PWA mostra indicador visual de fixado; pinned vence urgente na ordenação
-  - [ ] Múltiplos pinned ordenados por recência (data desc)
+  - [x] Campo `pinned: true` no model; `GET /api/posts` ordena pinned primeiro
+  - [x] Admin fixa/desfixa pela listagem (publicado); rascunho/agendado sem ação "Fixar"
+  - [x] PWA mostra indicador visual de fixado; pinned vence urgente na ordenação
+  - [x] Múltiplos pinned ordenados por recência (data desc)
 
 ### I-05 — Validade/expiração automática
 - **Descrição:** permitir definir uma data de validade; ao expirar, o comunicado sai do feed automaticamente (sem delete).

@@ -179,6 +179,30 @@ Gravar conceitos/camadas/lacunas no megamemory (record) ao concluir.
       recria conceitos em duplicata no top-level (os módulos falham com "already exists", mas
       os filhos são recriados sem parent) — conferir existência antes de criar ou verificar o
       grafo após a gravação (`list_roots`) e remover duplicatas com `remove_concept`.
+16. **Ambiente e encerramento (I-09)**:
+    - **Conferir o ambiente de QA antes do portão Fase 5**: Mongo (docker compose) pode estar
+      parado e o backend com `ECONNREFUSED 27017` (API `/health` vazio) no início do QA — subir
+      `docker compose up -d` e **reiniciar o backend** após o Mongo estar saudável (o processo
+      que subiu antes não se re-conecta sozinho). Sem isso, o QA roda contra dados/estado
+      errados. **Gotcha (I-04):** rodar o `setsid nohup … & disown` do restart **isolado**, em
+      chamada bash própria — encadear com `&&`+`curl` no mesmo comando pode travar o shell até o
+      timeout; verificar a saúde em chamada separada.
+    - **Conferir o estado da issue antes de `gh issue close`**: quando o board já foi movido para
+      **Done** (via Projects v2), `gh issue close` falha com "already closed". Consultar
+      `gh issue view <n> --json state,closedAt` antes de tentar fechar; se `closed: true`, só
+      registrar o comentário estruturado e não reportar o close como erro.
+    - **Commits na `main` SEMPRE no repo real, nunca no mirror de symlinks**: neste Linux
+      `/home/oberdan/WebstormProjects/interact` é um mirror por symlinks; o `git status`/`diff`
+      ali mostra ghosts (`T AGENTS.md`, `T ISSUES.md`, `T README.md`, `D .gitignore`,
+      `D .github/*`) que poluem o diff e não são mudanças reais. Commitar docs da `main` em
+      `/home/oberdan/projetos/interact` (repo real, onde os blobs são arquivos), e revisar o
+      `git diff` antes de `git add` para não arrastar artefatos do mirror.
+    - **QA de busca/campo com debounce: `fill('')` não dispara re-render**: em
+      `chrome-devtools`/Playwright, `fill("")` seta o value mas **não dispara o evento `input`**
+      — o `state.search` fica defasado e o feed/empty-state mostra o termo antigo (ex.: "Rafael"
+      após limpar a busca). Para limpar o termo durante o QA, usar **teclado**
+      (`Control+A` + `Backspace`, que dispara `input`) ou **reload** da página para resetar o
+      estado; não confiar em `fill("")` para resetar campos com handler de debounce.
 
 ## Checklist de verificação do dono (conferir periodicamente)
 

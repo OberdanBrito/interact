@@ -121,6 +121,12 @@ Gravar conceitos/camadas/lacunas no megamemory (record) ao concluir.
     lido) é verificado via DOM (`unread-dot`) e localStorage (`userData.read`), não só pelo
     snapshot de a11y; fechar sheets/modais antes de interagir com filtros (backdrop intercepta
     cliques).
+13. **Gotchas de CLI (I-12)**: `openspec validate` usa `--changes` (não `--change`); `openspec
+    archive <nome>` é posicional e, quando o spec já foi sincronizado manualmente via
+    `openspec-sync-specs`, usar `-y --skip-specs` (sem isso o archive aborta com "already
+    exists"). No `gh api graphql`, option ids de Projects v2 vão com `-f` (string bruta); `-F`
+    converte números e quebra o coerce de `String!`. Playwright: a sheet é `<div>`, não
+    `<dialog>` (usar `#sheet .js-*`); sessão pode já estar ativa no QA (login form oculto).
 
 ## Checklist de verificação do dono (conferir periodicamente)
 

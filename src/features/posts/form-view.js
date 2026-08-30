@@ -224,6 +224,17 @@ export async function render(root, { id } = {}) {
           : ""
       }
 
+      <div class="field">
+        <label class="field-label" for="f-expires-at">Validade (opcional)</label>
+        <input class="input" id="f-expires-at" data-field="expires-at" type="datetime-local"
+               value="${escapeHTML(toDatetimeLocal(values.expiresAt))}"
+               aria-describedby="f-expires-hint ${errorId("expires-at")}">
+        <p class="field-hint" id="f-expires-hint">
+          Em branco = sem validade. Ao expirar, o comunicado sai do app automaticamente.
+        </p>
+        <p class="field-error" id="${errorId("expires-at")}" hidden></p>
+      </div>
+
       <div class="form-grid">
         <div class="field">
           <label class="field-label" for="f-author-name">Autor — nome</label>
@@ -279,6 +290,7 @@ export async function render(root, { id } = {}) {
     body: root.querySelector("#f-body"),
     urgent: root.querySelector("#f-urgent"),
     publishAt: root.querySelector("#f-publish-at"),
+    expiresAt: root.querySelector("#f-expires-at"),
   };
 
   form.addEventListener("input", (event) => {
@@ -397,6 +409,11 @@ export async function render(root, { id } = {}) {
         ].map((el) => el.value),
         status: "draft",
       };
+      if (input.expiresAt) {
+        const raw = input.expiresAt.value;
+        if (raw) data.expiresAt = new Date(raw).toISOString();
+        else if (editing) data.expiresAt = "";
+      }
       if (editing) delete data.targetGroups;
       persist(data, "draft");
     });
@@ -450,6 +467,22 @@ export async function render(root, { id } = {}) {
         }
       } else if (editing && values.published === false) {
         data.publishAt = ""; // publica agora
+      }
+    }
+
+    // Validade (I-05): opcional — vazio omite (criação) ou limpa (edição, reativa);
+    // preenchido envia ISO. Passado é aceito pelo backend (expiração imediata).
+    if (input.expiresAt) {
+      const raw = input.expiresAt.value;
+      if (raw) {
+        const when = new Date(raw);
+        if (Number.isNaN(when.getTime())) {
+          fail(input.expiresAt, "Data de validade inválida.");
+        } else {
+          data.expiresAt = when.toISOString();
+        }
+      } else if (editing) {
+        data.expiresAt = "";
       }
     }
 

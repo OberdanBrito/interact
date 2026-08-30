@@ -732,6 +732,12 @@ button {
   border: 1px solid var(--border);
 }
 
+.badge-expired {
+  color: var(--text-secondary);
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
 /* ===== Lista de comunicados ===== */
 
 .page-head {
@@ -856,6 +862,12 @@ tbody tr:hover {
   font-size: var(--fs-meta);
   color: var(--text-secondary);
   white-space: nowrap;
+}
+
+.cell-expiry {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-secondary);
 }
 
 .cell-author {

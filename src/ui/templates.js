@@ -88,6 +88,10 @@ export function draftBadgeHTML() {
   return `<span class="badge badge-draft">${icon("i-edit", 12)} Rascunho</span>`;
 }
 
+export function expiredBadgeHTML() {
+  return `<span class="badge badge-expired">${icon("i-alert", 12)} Expirado</span>`;
+}
+
 export function readModeLabel(readMode) {
   return readMode === "ack" ? "Confirmação" : "Automática";
 }
@@ -102,6 +106,7 @@ export function postRowHTML(post) {
       <td class="cell-post">
         <div class="cell-title">
           <span class="cell-title-text">${title}</span>
+          ${post.expired ? expiredBadgeHTML() : ""}
           ${post.status === "agendado" ? scheduledBadgeHTML() : ""}
           ${post.status === "rascunho" ? draftBadgeHTML() : ""}
           ${post.pinned ? pinnedBadgeHTML() : ""}
@@ -112,8 +117,15 @@ export function postRowHTML(post) {
       </td>
       <td>${categoryBadgeHTML(post.categoryId)}</td>
       <td class="cell-meta">${readModeLabel(post.readMode)}</td>
-      <td class="cell-meta"><time datetime="${escapeHTML(post.dateISO)}"
-        title="${escapeHTML(fullDate(post.dateISO))}">${relativeDate(post.dateISO)}</time></td>
+      <td class="cell-meta">
+        <time datetime="${escapeHTML(post.dateISO)}"
+          title="${escapeHTML(fullDate(post.dateISO))}">${relativeDate(post.dateISO)}</time>
+        ${
+          post.expiresAt
+            ? `<span class="cell-expiry">Expira em ${escapeHTML(fullDate(post.expiresAt))}</span>`
+            : ""
+        }
+      </td>
       <td>
         <div class="cell-author">
           <span class="avatar avatar-sm" aria-hidden="true">${escapeHTML(

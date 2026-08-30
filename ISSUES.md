@@ -183,12 +183,13 @@ fila funcional deste documento.
 - **Componentes:** `frontend_pwa` (feed.js, templates)
 - **Prioridade:** Alta
 - **Esforço:** S (≤ 1 dia)
-- **Status:** Aberto
+- **Status:** Concluído
+- **Registro:** frontend_pwa `dfc17cb` (implementação) + `8c2da18` (arquiva change e sincroniza spec), branch `frontend_pwa`. Verificado por validação visual (Playwright :5173) e cenário offline. OpenSpec arquivado em `openspec/changes/archive/2026-08-30-busca-no-pwa`.
 - **Critérios de aceite:**
-  - [ ] Campo de busca no feed; digitar filtra por título/autor via `?search=`
-  - [ ] Busca respeita visibilidade (grupos) e o seletor de ambiente ativo
-  - [ ] Busca funciona **dentro do Arquivo** (critério I-12): a UI de busca deve combinar `?search` com `?archive=active|archived` da visão atual — hoje a busca no arquivo só existe no nível da API
-  - [ ] Offline: busca cai para o cache do IndexedDB (filtro local, incluindo o corte por idade da I-12)
+  - [x] Campo de busca no feed; digitar filtra por título/autor via `?search=`
+  - [x] Busca respeita visibilidade (grupos) e o seletor de ambiente ativo
+  - [x] Busca funciona **dentro do Arquivo** (critério I-12): a UI de busca deve combinar `?search` com `?archive=active|archived` da visão atual — hoje a busca no arquivo só existe no nível da API
+  - [x] Offline: busca cai para o cache do IndexedDB (filtro local, incluindo o corte por idade da I-12)
 
 ### I-10 — Paginação / infinite scroll
 - **Descrição:** o feed carrega todos os comunicados de uma vez. Adicionar paginação (limit/offset ou cursor) para escalar com volume.

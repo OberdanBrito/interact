@@ -127,6 +127,16 @@ Gravar conceitos/camadas/lacunas no megamemory (record) ao concluir.
     exists"). No `gh api graphql`, option ids de Projects v2 vão com `-f` (string bruta); `-F`
     converte números e quebra o coerce de `String!`. Playwright: a sheet é `<div>`, não
     `<dialog>` (usar `#sheet .js-*`); sessão pode já estar ativa no QA (login form oculto).
+14. **Testes sequenciais com estado (I-04)**: cenários de QA que mutam estado compartilhado
+    (ex.: fixar/desfixar pin) não assumem "estado limpo" entre cenários — criar o conjunto
+    completo de dados/controles ANTES das asserções (ex.: um post não-fixado de controle) ou
+    resetar o estado explicitamente. Falha no 1º run do teste NÃO é necessariamente bug de
+    código: registrar a causa (autoria do teste vs implementação). Playwright: screenshot com
+    caminho absoluto fora das raízes permitidas falha — salvar relativo (`.playwright-mcp/`) e
+    copiar para `/tmp/opencode`. Restart do backend: `setsid nohup … & disown` roda ISOLADO
+    (encadear com `&&`+curl no mesmo bash pode travar o shell até timeout); verificar saúde em
+    chamada separada. Após mutation GraphQL com warnings de "variável não usada", confirmar o
+    resultado com query de verificação.
 
 ## Checklist de verificação do dono (conferir periodicamente)
 

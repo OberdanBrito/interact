@@ -169,6 +169,16 @@ Gravar conceitos/camadas/lacunas no megamemory (record) ao concluir.
       regra de negócio não óbvia (ex.: `expiresAt` aceita passado = expiração imediata; limpar
       mantém o estado) ou segue a convenção de bloco por issue do arquivo; remover o redundante
       (código auto-explicativo).
+    - **`ISSUES.md` pode estar defasado**: antes de atualizar o resumo/tabela, conferir a
+      contagem REAL de status por prioridade (lendo cada seção `### I-XX`), não confiar na
+      tabela — a Baixa dizia 5/1 quando a realidade era 4/2 (I-11/I-12 concluídas sem registro).
+    - **Arquivo trackeado mas gitignorado**: `.opencode/` está no `.gitignore` do
+      `frontend_admin` mesmo com a skill trackeada — `git add` rejeita o caminho; usar
+      `git add -f <caminho>` (trackeado vence o ignore) e confirmar com `git status`.
+    - **Gravação no megamemory deve ser idempotente**: reexecutar um script de `record`
+      recria conceitos em duplicata no top-level (os módulos falham com "already exists", mas
+      os filhos são recriados sem parent) — conferir existência antes de criar ou verificar o
+      grafo após a gravação (`list_roots`) e remover duplicatas com `remove_concept`.
 
 ## Checklist de verificação do dono (conferir periodicamente)
 

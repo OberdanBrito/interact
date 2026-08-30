@@ -4,6 +4,9 @@ node_modules/
 # Build (regenerável com `npm run build`)
 dist/
 
+# Segredos / estado local
+.env
+
 # Estado local de ferramentas de agente
 .omo/
 .playwright-mcp/

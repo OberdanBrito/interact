@@ -48,6 +48,9 @@ async function toPost(doc) {
     status: doc.draft === true ? "rascunho" : published ? "publicado" : "agendado",
     publishAt: doc.publishAt ? new Date(doc.publishAt).toISOString() : null,
     pinned: doc.pinned === true,
+    expiresAt: doc.expiresAt ? new Date(doc.expiresAt).toISOString() : null,
+    expired:
+      doc.expiresAt != null && new Date(doc.expiresAt).getTime() < Date.now(),
   };
 }
 
@@ -83,6 +86,14 @@ router.get("/", async (req, res) => {
         Date.now() - ARCHIVE_AFTER_DAYS * 24 * 60 * 60 * 1000
       );
       filter.dateISO = archive === "active" ? { $gte: cutoff } : { $lt: cutoff };
+    }
+
+    // Filtro de expirados (I-05): colaborador nunca vê comunicado com validade vencida,
+    // em nenhuma visão (sem ?archive, active e archived) — expiração é mais forte que idade.
+    if (req.user.role !== "admin") {
+      and.push({
+        $or: [{ expiresAt: null }, { expiresAt: { $gte: new Date() } }],
+      });
     }
 
     // Visibilidade por grupo (feature segmentação)
@@ -138,10 +149,13 @@ router.get("/:id", async (req, res) => {
 
     // Visibilidade: não elegível → 404 (não revela existência)
     const targetGroups = doc.targetGroups ?? [];
+    const expired =
+      doc.expiresAt != null && new Date(doc.expiresAt).getTime() < Date.now();
     const eligible =
       req.user.role === "admin"
         ? String(doc.createdBy) === String(req.user.id)
         : doc.published !== false &&
+          !expired &&
           (targetGroups.length === 0 ||
             targetGroups.some((g) => req.user.groupIds.includes(g)));
 
@@ -168,6 +182,7 @@ router.post("/", requireAdmin, async (req, res) => {
     targetGroups,
     publishAt,
     status,
+    expiresAt,
   } = req.body;
 
   // Rascunho (I-02): criado sem publicar, com validação relaxada e sem data de liberação
@@ -220,6 +235,17 @@ router.post("/", requireAdmin, async (req, res) => {
     scheduledAt = candidate;
   }
 
+  // Valida validade (opcional, I-05): formato inválido → 400;
+  // data passada é aceita (expiração imediata — `expired: true`).
+  let expiresAtDate = null;
+  if (expiresAt && expiresAt !== "") {
+    const candidate = new Date(expiresAt);
+    if (Number.isNaN(candidate.getTime())) {
+      return res.status(400).json({ error: "Data de validade inválida" });
+    }
+    expiresAtDate = candidate;
+  }
+
   try {
     // Gera próximo ID (p01, p02, ...)
     const last = await Comunicado.findOne().sort({ _id: -1 }).select("_id").lean();
@@ -249,6 +275,7 @@ router.post("/", requireAdmin, async (req, res) => {
       publishAt: isDraft ? null : scheduledAt,
       published: !isDraft && !scheduledAt,
       draft: isDraft,
+      expiresAt: expiresAtDate,
     });
 
     if (scheduledAt) {
@@ -275,6 +302,7 @@ router.put("/:id", requireAdmin, async (req, res) => {
     publishAt,
     status,
     pinned,
+    expiresAt,
   } = req.body;
 
   // Transições de estado (I-02)
@@ -404,6 +432,20 @@ router.put("/:id", requireAdmin, async (req, res) => {
           .json({ error: "Apenas comunicados publicados podem ser fixados" });
       }
       doc.pinned = pinned === true;
+    }
+
+    // Validade (I-05): opcional — vazio/null limpa (reativa mantendo o estado atual);
+    // data válida define (passada = expiração imediata); inválida → 400.
+    if (expiresAt !== undefined) {
+      if (expiresAt === "" || expiresAt === null) {
+        doc.expiresAt = null;
+      } else {
+        const candidate = new Date(expiresAt);
+        if (Number.isNaN(candidate.getTime())) {
+          return res.status(400).json({ error: "Data de validade inválida" });
+        }
+        doc.expiresAt = candidate;
+      }
     }
 
     // Update parcial — só altera campos presentes (equivalente ao COALESCE)

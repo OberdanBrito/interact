@@ -61,6 +61,11 @@ const comunicadoSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Validade/expiração (I-05): opcional, default null (sem validade)
+    expiresAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );

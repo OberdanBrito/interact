@@ -1,0 +1,21 @@
+# Dependências
+node_modules/
+
+# Build
+dist/
+
+# Segredos / estado local
+.env
+
+# Estado local de ferramentas de agente
+.omo/
+.playwright-mcp/
+.opencode/
+.megamemory/
+
+# Artefatos de evidência de teste
+qa-*.png
+
+# Sistema operacional
+.DS_Store
+Thumbs.db

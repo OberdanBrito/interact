@@ -6,10 +6,11 @@ import {
   relativeDate,
   initialsOf,
 } from "../core/utils.js";
-import { getPostByIdAsync, getCategoryLabel } from "../data/posts.js";
+import { getPostByIdAsync, getCategoryLabel, getAttachmentUrl, getToken } from "../data/posts.js";
 import { getUserData } from "../features/auth/session.js";
-import { actionButtonsHTML } from "../features/feed/templates.js";
+import { actionButtonsHTML, attachmentsListHTML } from "../features/feed/templates.js";
 import { cancelAutoRead, scheduleAutoRead } from "../features/feed/autoread.js";
+import { showToast } from "./toast.js";
 
 function currentActionsHTML(post) {
   const userData = getUserData();
@@ -40,6 +41,17 @@ export async function openSheet(postId) {
   $("#sheet-text").innerHTML = post.body
     .map((paragraph) => `<p>${escapeHTML(paragraph)}</p>`)
     .join("");
+
+  const attachmentsEl = $("#sheet-attachments");
+  const listHTML = attachmentsListHTML(post.attachments, postId);
+  attachmentsEl.innerHTML = listHTML;
+  attachmentsEl.hidden = listHTML === "";
+  attachmentsEl.onclick = (event) => {
+    const btn = event.target.closest(".js-save-attachment");
+    if (!btn) return;
+    event.preventDefault();
+    downloadAttachment(btn.dataset.postId, btn.dataset.attachmentId);
+  };
 
   const transparency = $("#sheet-transparency");
   const isTargeted = (post.targetGroups?.length ?? 0) > 0;
@@ -72,6 +84,32 @@ export async function openSheet(postId) {
   if (post.readMode !== "ack") scheduleAutoRead();
 
   $("#sheet-close").focus();
+}
+
+async function downloadAttachment(postId, attachmentId) {
+  try {
+    const res = await fetch(getAttachmentUrl(postId, attachmentId), {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    });
+    if (!res.ok) {
+      showToast("Não foi possível baixar o anexo.");
+      return;
+    }
+    const blob = await res.blob();
+    const disposition = res.headers.get("content-disposition") || "";
+    const match = disposition.match(/filename="?([^";]+)"?/);
+    const name = match ? decodeURIComponent(match[1]) : "anexo";
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch {
+    showToast("Sem conexão para baixar o anexo.");
+  }
 }
 
 export function closeSheet(silent = false) {

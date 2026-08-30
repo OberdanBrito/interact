@@ -1,6 +1,36 @@
 import { escapeHTML, relativeDate, initialsOf } from "../../core/utils.js";
 import { getCategoryLabel } from "../../data/posts.js";
 
+function formatFileSize(bytes) {
+  const n = Number(bytes) || 0;
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function attachmentsListHTML(attachments, postId) {
+  const list = attachments || [];
+  if (list.length === 0) return "";
+  return `
+    <ul class="attachment-list">
+      ${list
+        .map(
+          (a) => `
+        <li class="attachment-item">
+          <button type="button" class="attachment-link js-save-attachment"
+                  data-post-id="${escapeHTML(postId)}"
+                  data-attachment-id="${escapeHTML(a.id)}"
+                  aria-label="Baixar anexo ${escapeHTML(a.name || "anexo")}">
+            <svg width="18" height="18" aria-hidden="true"><use href="#i-download"/></svg>
+            <span class="attachment-name">${escapeHTML(a.name || "—")}</span>
+            <span class="attachment-meta">${escapeHTML(formatFileSize(a.size))}</span>
+          </button>
+        </li>`
+        )
+        .join("")}
+    </ul>`;
+}
+
 export function actionButtonsHTML(post, { liked, read }) {
   const needsAck = post.readMode === "ack";
   return `

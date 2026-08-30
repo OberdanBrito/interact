@@ -168,3 +168,7 @@ export async function fetchMyInteractions() {
     return {};
   }
 }
+
+export function getAttachmentUrl(postId, attachmentId) {
+  return `${API_BASE}/api/posts/${postId}/attachments/${attachmentId}`;
+}

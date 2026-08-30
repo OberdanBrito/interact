@@ -607,6 +607,51 @@ h1, h2, p { margin: 0; }
 .sheet-text p { margin-bottom: 12px; }
 .sheet-text p:last-child { margin-bottom: 0; }
 
+.sheet-attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 14px;
+}
+
+.attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.attachment-item { margin: 0; }
+
+.attachment-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.attachment-link svg { color: var(--navy-800); flex: 0 0 auto; }
+.attachment-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.attachment-meta {
+  margin-left: auto;
+  font-size: var(--fs-meta);
+  color: var(--text-secondary);
+}
+
 .sheet-transparency {
   margin-top: 16px;
   padding-top: 12px;

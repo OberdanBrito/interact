@@ -20,10 +20,10 @@ implementar e como verificar. Atualize o status ao iniciar/concluir cada item.
 |---|---|---|---|---|---|
 | Alta | 1 | 0 | 1 | 0 | 0 |
 | Média | 4 | 0 | 2 | 0 | 0 |
-| Baixa | 5 | 0 | 1 | 0 | 0 |
+| Baixa | 3 | 0 | 3 | 0 | 0 |
 | — | 0 | 0 | 0 | 1 | 3 |
 
-**Total: 18 issues** (2 Alta — 1 aberta, 1 concluída —, 6 Média — 4 abertas, 2 concluídas —, 6 Baixa — 4 abertas, 2 concluídas —, 1 Adiada, 3 Fora de escopo)
+**Total: 18 issues** (2 Alta — 1 aberta, 1 concluída —, 6 Média — 4 abertas, 2 concluídas —, 6 Baixa — 3 abertas, 3 concluídas —, 1 Adiada, 3 Fora de escopo)
 
 ## Vínculo com GitHub
 
@@ -124,13 +124,14 @@ fila funcional deste documento.
 - **Componentes:** `backend` (model Comunicado + rota posts), `frontend_admin` (form-view)
 - **Prioridade:** Baixa
 - **Esforço:** S (≤ 1 dia)
-- **Status:** Aberto
-- **Decisão/Obrigatoriedade:** `expiresAt` **opcional**; expirado = `expiresAt < now`; colaborador NÃO vê, admin vê com selo "Expirado" (reativar = limpar `expiresAt`); interação com I-12 (histórico) a resolver. **Após I-12:** comunicado expirado **recente** (dateISO dentro da janela ativa de 30 dias) ficaria invisível — nem "Ativo" nem "Arquivo" —; decisão pendente: expirado vai para o Arquivo (novo `?archive`? ou filtro extra) ou sai do produto.
+- **Status:** Concluída (30/08)
+- **Decisão/Obrigatoriedade:** `expiresAt` **opcional** (nunca bloqueia criar, salvar rascunho, publicar ou agendar); expirado = `expiresAt < now` (derivado na consulta, sem scheduler — nada é deletado); colaborador NÃO vê, admin vê com selo "Expirado" (reativar = limpar `expiresAt`, mantém o estado atual); **D1 (interação I-12):** expirado some do feed **inteiro** do colaborador — feed, "Ativos" e "Arquivo" (expiração é mais forte que idade; conteúdo não mais válido não fica nem no histórico); **D2:** `status` não muda (rascunho/agendado/publicado) — validade é eixo separado; **D3:** `expiresAt` aceita data passada (expiração imediata), só formato inválido → 400; **D4:** sem validação cruzada `expiresAt` × `publishAt`.
+- **Resultado:** model `expiresAt` + `toPost` expõe `expiresAt`/`expired`; `GET /api/posts` filtra expirados do colaborador em todas as visões; admin sem filtro (vê com `expired: true`); `GET /:id` de expirado → 404 para colaborador; POST/PUT aceitam/limpam `expiresAt` (backend). Campo "Validade (opcional)" no formulário (vazio = "" nunca "null"; limpar = reativa), selo "Expirado" + "Expira em …" na listagem (admin). Teste versionado `scripts/qa-i05.mjs` 25/25; QA visual PWA+admin ok. Commits: backend `4e8b9de`+`687fc46`, admin `83c188b`+`bf7cd95`.
 - **Critérios de aceite:**
-  - [ ] Campo `expiresAt` opcional; colaborador não vê expirados; admin vê com selo "Expirado"
-  - [ ] Admin vê indicador "Expirado" na listagem e pode reativar (limpar `expiresAt`)
-  - [ ] Expiração não apaga o documento (histórico preservado)
-  - [ ] Sem `expiresAt` → campo vazio na UI (não "null")
+  - [x] Campo `expiresAt` opcional; colaborador não vê expirados; admin vê com selo "Expirado"
+  - [x] Admin vê indicador "Expirado" na listagem e pode reativar (limpar `expiresAt`)
+  - [x] Expiração não apaga o documento (histórico preservado)
+  - [x] Sem `expiresAt` → campo vazio na UI (não "null")
 
 ---
 

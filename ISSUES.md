@@ -97,13 +97,14 @@ fila funcional deste documento.
 - **Componentes:** `backend` (rota posts + upload), `frontend_admin` (form-view), `frontend_pwa` (feed/templates)
 - **Prioridade:** Média
 - **Esforço:** L (1 semana+)
-- **Status:** Aberto
-- **Decisão/Obrigatoriedade:** anexo é **opcional** (nunca bloqueia criar/salvar rascunho/publicar/agendar); rascunho pode ter anexo.
+- **Status:** Concluído (30/08)
+- **Decisão/Obrigatoriedade:** anexo é **opcional** (nunca bloqueia criar/salvar rascunho/publicar/agendar); rascunho pode ter anexo. **D1** armazenamento local via multer (`uploads/`, gitignorado) — não bucket; **D2** endpoints sob `/api/posts/:id/attachments` (`POST` upload, `GET /:attachmentId` serve binário, `DELETE` remover) herdando a **mesma visibilidade do comunicado** (helper `isPostEligible`; não-elegível/inexistente → 404, sem vazar para não-alvo); **D3** identidade do anexo = uuid (`randomUUID`; nome original preservado no `name`); **D4** limites no backend como fonte de verdade (`MAX_ATTACHMENT_MB` 10 + tipos permitidos pdf/png/jpeg/gif/webp em `src/upload.js`), admin espelha para UX; **D5** `attachments` nunca `null` (ausência → `[]`; UI vazio/"—"); **D6** download no PWA via `fetch` autenticado em blob (token nunca na URL); **D7** cache offline só de metadados (binário não cacheado, no-op gracioso).
+- **Resultado:** model `attachments` + `toPost` expõe (nunca `null`); endpoints de upload/servir/remover; validação de limite/tipo com erro claro (400); `DELETE /:id` remove binários. Teste versionado `scripts/qa-i03.mjs` 25/25 (Mongo real) + `test:integration` (70 checks, 0 falhas). QA visual PWA+admin ok (upload, listar/remover, download autenticado com token fora da URL, ausência sem `null`, cache offline). Commits: backend `f8a2543`+`e6ca4b7`, admin `eb397b6`+`56ba800`, pwa `2a8c20a`+`15e613b`.
 - **Critérios de aceite:**
-  - [ ] Admin anexa arquivo no formulário; `GET /api/posts/:id` retorna metadados do anexo
-  - [ ] PWA exibe anexo com link de download/visualização
-  - [ ] Anexo respeita a visibilidade do comunicado (não vaza para não-alvo; sem anexo → vazio, não "null")
-  - [ ] Limites de tamanho/tipo documentados e validados (erro claro no admin)
+  - [x] Admin anexa arquivo no formulário; `GET /api/posts/:id` retorna metadados do anexo
+  - [x] PWA exibe anexo com link de download/visualização
+  - [x] Anexo respeita a visibilidade do comunicado (não vaza para não-alvo; sem anexo → vazio/`[]`, não "null")
+  - [x] Limites de tamanho/tipo documentados e validados (erro claro no admin)
 
 ### I-04 — Fixar comunicado importante
 - **Descrição:** permitir fixar (pin) um comunicado no topo do feed, independente da ordenação inteligente.

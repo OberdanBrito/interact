@@ -56,6 +56,11 @@ const comunicadoSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Fixado no topo do feed (I-04): opcional, default false
+    pinned: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

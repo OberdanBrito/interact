@@ -47,6 +47,7 @@ async function toPost(doc) {
     published,
     status: doc.draft === true ? "rascunho" : published ? "publicado" : "agendado",
     publishAt: doc.publishAt ? new Date(doc.publishAt).toISOString() : null,
+    pinned: doc.pinned === true,
   };
 }
 
@@ -116,7 +117,8 @@ router.get("/", async (req, res) => {
       filter.$and = and;
     }
 
-    const docs = await Comunicado.find(filter).sort({ dateISO: -1 }).lean();
+    // Fixados primeiro, depois por recência (I-04). Mongo: false < true, então -1 põe true no topo.
+    const docs = await Comunicado.find(filter).sort({ pinned: -1, dateISO: -1 }).lean();
 
     res.json(await Promise.all(docs.map(toPost)));
   } catch (err) {
@@ -272,6 +274,7 @@ router.put("/:id", requireAdmin, async (req, res) => {
     targetGroups,
     publishAt,
     status,
+    pinned,
   } = req.body;
 
   // Transições de estado (I-02)
@@ -391,6 +394,16 @@ router.put("/:id", requireAdmin, async (req, res) => {
         doc.dateISO = candidate;
         doc.draft = false;
       }
+    }
+
+    // Pin (I-04): só faz sentido em comunicado já publicado (rascunho/agendado → 400)
+    if (pinned !== undefined) {
+      if (doc.published !== true) {
+        return res
+          .status(400)
+          .json({ error: "Apenas comunicados publicados podem ser fixados" });
+      }
+      doc.pinned = pinned === true;
     }
 
     // Update parcial — só altera campos presentes (equivalente ao COALESCE)

@@ -157,6 +157,8 @@ h1, h2, p { margin: 0; }
 
 .badge-urgent { color: var(--danger); background: var(--danger-bg); }
 
+.badge-pinned { color: var(--navy-700); background: var(--navy-100); }
+
 .badge-targeted { color: var(--navy-700); background: var(--navy-100); }
 
 .spinner {

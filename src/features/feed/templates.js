@@ -34,6 +34,7 @@ export function postCardHTML(post, { liked, read }) {
       <div class="post-meta-row">
         <span class="unread-dot" ${read ? "hidden" : ""} aria-hidden="true"></span>
         <span class="badge" data-cat="${post.categoryId}">${getCategoryLabel(post.categoryId)}</span>
+        ${post.pinned ? '<span class="badge badge-pinned"><svg width="11" height="11" aria-hidden="true" focusable="false"><use href="#i-pin"/></svg> Fixado</span>' : ""}
         ${post.urgent ? '<span class="badge badge-urgent">Urgente</span>' : ""}
         ${post.targetGroups?.length ? '<span class="badge badge-targeted">Direcionado</span>' : ""}
         <time class="post-time">${relativeDate(post.dateISO)}</time>

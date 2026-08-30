@@ -90,10 +90,11 @@ export function renderEnvSelector() {
   }
 }
 
-// Ordenação inteligente: urgentes primeiro, depois não-lidos, depois mais recentes.
+// Ordenação inteligente: fixados primeiro (I-04), depois urgentes, depois não-lidos, depois mais recentes.
 function sortFeed(posts) {
   const userData = getUserData();
   return [...posts].sort((a, b) => {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
     if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
     const aUnread = !userData.read.includes(a.id);
     const bUnread = !userData.read.includes(b.id);

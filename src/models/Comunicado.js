@@ -66,6 +66,20 @@ const comunicadoSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // Anexos (I-03): metadados dos arquivos/imagens anexados; binário em disco (uploads/)
+    attachments: {
+      type: [
+        {
+          _id: false,
+          id: { type: String, default: null },
+          name: { type: String, default: "" },
+          type: { type: String, default: "" },
+          size: { type: Number, default: 0 },
+          url: { type: String, default: "" },
+        },
+      ],
+      default: [],
+    },
   },
   { timestamps: true }
 );

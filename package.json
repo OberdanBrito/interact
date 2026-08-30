@@ -9,10 +9,11 @@
     "start": "node src/server.js",
     "seed": "node src/db/seed.js",
     "db:reset": "docker compose down -v && docker compose up -d && sleep 5 && npm run seed",
-    "test:integration": "node scripts/qa-i11.mjs && node scripts/qa-i12.mjs && node scripts/qa-i04.mjs && node scripts/qa-i05.mjs",
+    "test:integration": "node scripts/qa-i11.mjs && node scripts/qa-i12.mjs && node scripts/qa-i04.mjs && node scripts/qa-i05.mjs && node scripts/qa-i03.mjs",
     "qa:i12": "node scripts/qa-i12.mjs",
     "qa:i04": "node scripts/qa-i04.mjs",
-    "qa:i05": "node scripts/qa-i05.mjs"
+    "qa:i05": "node scripts/qa-i05.mjs",
+    "qa:i03": "node scripts/qa-i03.mjs"
   },
   "license": "UNLICENSED",
   "dependencies": {
@@ -22,6 +23,7 @@
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.0.0",
+    "multer": "^2.3.0",
     "node-schedule": "^2.1.1"
   },
   "allowScripts": {

@@ -1,10 +1,13 @@
 import mongoose from "mongoose";
 import { Router } from "express";
+import { unlink } from "node:fs/promises";
+import path from "node:path";
 import Comunicado from "../models/Comunicado.js";
 import Group from "../models/Group.js";
 import auth from "../middleware/auth.js";
 import requireAdmin from "../middleware/requireAdmin.js";
 import { schedulePublish, cancelPublish } from "../scheduler.js";
+import upload, { UPLOAD_DIR, MAX_ATTACHMENT_MB } from "../upload.js";
 
 const router = Router();
 
@@ -51,6 +54,7 @@ async function toPost(doc) {
     expiresAt: doc.expiresAt ? new Date(doc.expiresAt).toISOString() : null,
     expired:
       doc.expiresAt != null && new Date(doc.expiresAt).getTime() < Date.now(),
+    attachments: doc.attachments ?? [],
   };
 }
 
@@ -60,6 +64,28 @@ const ARCHIVE_AFTER_DAYS = Number.parseInt(process.env.ARCHIVE_AFTER_DAYS, 10) |
 // Escapa metacaracteres para busca literal (equivalente ao ILIKE %...%)
 function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Elegibilidade de um comunicado para um usuário (I-03):
+// admin vê só o que publicou; colaborador vê somente publicados, não expirados e
+// direcionados aos seus grupos (ou broadcast). Não-elegível → 404 (não revela o recurso).
+function isPostEligible(doc, user) {
+  const targetGroups = doc.targetGroups ?? [];
+  const expired =
+    doc.expiresAt != null && new Date(doc.expiresAt).getTime() < Date.now();
+  if (user.role === "admin") {
+    return String(doc.createdBy) === String(user.id);
+  }
+  return (
+    doc.published !== false &&
+    !expired &&
+    (targetGroups.length === 0 ||
+      targetGroups.some((g) => user.groupIds.includes(g)))
+  );
+}
+
+function attachmentFilePath(attachmentId) {
+  return path.resolve(UPLOAD_DIR, attachmentId);
 }
 
 // GET /api/posts — lista todos. Query params: ?category, ?search, ?groupId, ?archive
@@ -148,18 +174,7 @@ router.get("/:id", async (req, res) => {
     }
 
     // Visibilidade: não elegível → 404 (não revela existência)
-    const targetGroups = doc.targetGroups ?? [];
-    const expired =
-      doc.expiresAt != null && new Date(doc.expiresAt).getTime() < Date.now();
-    const eligible =
-      req.user.role === "admin"
-        ? String(doc.createdBy) === String(req.user.id)
-        : doc.published !== false &&
-          !expired &&
-          (targetGroups.length === 0 ||
-            targetGroups.some((g) => req.user.groupIds.includes(g)));
-
-    if (!eligible) {
+    if (!isPostEligible(doc, req.user)) {
       return res.status(404).json({ error: "Comunicado não encontrado" });
     }
 
@@ -476,15 +491,147 @@ router.put("/:id", requireAdmin, async (req, res) => {
 router.delete("/:id", requireAdmin, async (req, res) => {
   try {
     cancelPublish(req.params.id); // não deixa o timer tentar liberar um post excluído
-    const deleted = await Comunicado.findByIdAndDelete(req.params.id);
 
-    if (!deleted) {
+    const doc = await Comunicado.findById(req.params.id);
+
+    if (!doc) {
       return res.status(404).json({ error: "Comunicado não encontrado" });
     }
 
+    // Exclui os binários primeiro para não deixar anexos órfãos no disco.
+    for (const att of doc.attachments ?? []) {
+      try {
+        await unlink(attachmentFilePath(att.id));
+      } catch {
+        /* arquivo já ausente do disco — ignorar */
+      }
+    }
+
+    await doc.deleteOne();
     res.status(204).end();
   } catch (err) {
     console.error("Erro ao excluir comunicado:", err.message);
+    res.status(500).json({ error: "Erro interno no servidor" });
+  }
+});
+
+// POST /api/posts/:id/attachments — anexa um arquivo (somente admin, I-03)
+router.post("/:id/attachments", requireAdmin, (req, res) => {
+  upload.single("file")(req, res, async (err) => {
+    if (err) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res
+          .status(400)
+          .json({ error: `Arquivo muito grande. Limite máximo é ${MAX_ATTACHMENT_MB} MB.` });
+      }
+      if (err.code === "UNSUPPORTED_TYPE") {
+        return res
+          .status(400)
+          .json({ error: "Tipo de arquivo não permitido. Envie PDF ou imagem (PNG, JPEG, GIF, WebP)." });
+      }
+      console.error("Erro de upload:", err.message);
+      return res.status(500).json({ error: "Erro interno no servidor" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: "Nenhum arquivo enviado" });
+    }
+
+    try {
+      const doc = await Comunicado.findById(req.params.id);
+      if (!doc) {
+        try {
+          await unlink(req.file.path);
+        } catch {
+          /* melhor esforço */
+        }
+        return res.status(404).json({ error: "Comunicado não encontrado" });
+      }
+
+      const attachment = {
+        id: req.file.filename,
+        name: req.file.originalname,
+        type: req.file.mimetype,
+        size: req.file.size,
+        url: `/api/posts/${req.params.id}/attachments/${req.file.filename}`,
+      };
+      doc.attachments = [...(doc.attachments ?? []), attachment];
+      await doc.save();
+
+      res.status(201).json(attachment);
+    } catch (e) {
+      console.error("Erro ao anexar arquivo:", e.message);
+      res.status(500).json({ error: "Erro interno no servidor" });
+    }
+  });
+});
+
+// GET /api/posts/:id/attachments/:attachmentId — serve o binário do anexo (I-03)
+// Respeita a MESMA visibilidade do comunicado: não-elegível → 404 (não revela existência).
+router.get("/:id/attachments/:attachmentId", async (req, res) => {
+  try {
+    const doc = await Comunicado.findById(req.params.id).lean();
+
+    if (!doc) {
+      return res.status(404).json({ error: "Comunicado não encontrado" });
+    }
+    if (!isPostEligible(doc, req.user)) {
+      return res.status(404).json({ error: "Comunicado não encontrado" });
+    }
+
+    const attachment = (doc.attachments ?? []).find(
+      (a) => a.id === req.params.attachmentId
+    );
+    if (!attachment) {
+      return res.status(404).json({ error: "Anexo não encontrado" });
+    }
+
+    res.setHeader("Content-Type", attachment.type || "application/octet-stream");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${encodeURIComponent(attachment.name || "anexo")}"`
+    );
+    res.sendFile(attachmentFilePath(attachment.id), (sendErr) => {
+      if (sendErr && !res.headersSent) {
+        res.status(404).json({ error: "Anexo não encontrado" });
+      }
+    });
+  } catch (err) {
+    console.error("Erro ao servir anexo:", err.message);
+    res.status(500).json({ error: "Erro interno no servidor" });
+  }
+});
+
+// DELETE /api/posts/:id/attachments/:attachmentId — remove um anexo (somente admin, I-03)
+router.delete("/:id/attachments/:attachmentId", requireAdmin, async (req, res) => {
+  try {
+    const doc = await Comunicado.findById(req.params.id);
+
+    if (!doc) {
+      return res.status(404).json({ error: "Comunicado não encontrado" });
+    }
+
+    const attachment = (doc.attachments ?? []).find(
+      (a) => a.id === req.params.attachmentId
+    );
+    if (!attachment) {
+      return res.status(404).json({ error: "Anexo não encontrado" });
+    }
+
+    try {
+      await unlink(attachmentFilePath(attachment.id));
+    } catch {
+      /* arquivo já ausente do disco — ignorar */
+    }
+
+    doc.attachments = doc.attachments.filter(
+      (a) => a.id !== req.params.attachmentId
+    );
+    await doc.save();
+
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error("Erro ao remover anexo:", err.message);
     res.status(500).json({ error: "Erro interno no servidor" });
   }
 });

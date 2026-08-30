@@ -7,6 +7,9 @@ dist/
 # Estado local
 .env
 
+# Uploads de anexos (I-03)
+uploads/
+
 # OS
 .DS_Store
 Thumbs.db

@@ -137,6 +137,38 @@ Gravar conceitos/camadas/lacunas no megamemory (record) ao concluir.
     (encadear com `&&`+curl no mesmo bash pode travar o shell até timeout); verificar saúde em
     chamada separada. Após mutation GraphQL com warnings de "variável não usada", confirmar o
     resultado com query de verificação.
+15. **Gotchas de ferramentas, ambiente e MCP (I-05)**:
+    - **Testes**: `node_modules` de worktree pode vir incompleto → rodar `npm install` antes do
+      portão Fase 4 (`qa-*.mjs` falha com `ERR_MODULE_NOT_FOUND` de dep já listada no
+      package.json).
+    - **Tool global sem sudo**: `npm config set prefix ~/.npm-global` + `export
+      PATH="$HOME/.npm-global/bin:$PATH"` no `~/.bashrc`; conferir exec bit no binário
+      (`chmod +x` — npm pode não setar); em config de MCP usar **caminho absoluto** do binário
+      (o instalador grava só o nome e o PATH do opencode ≠ PATH do shell).
+    - **MCP recém-instalado não carrega na sessão corrente** (só após restart do opencode):
+      contorno = cliente MCP mínimo via stdio (spawn do binário + JSON-RPC por linha:
+      `initialize` → `tools/list` → `tools/call`), tolerando linhas de log no stdout do servidor
+      (parse linha a linha, ignorando não-JSON). Útil para gravar conceitos no megamemory sem
+      esperar restart.
+    - **`gh issue view --comments` quebra** (GraphQL de projectCards em deprecação) → ler
+      comentários via REST: `gh api repos/{owner}/{repo}/issues/{n}/comments`.
+    - **Projects v2**: token default do `gh` pode não ter `read:project` (erro
+      `INSUFFICIENT_SCOPES`) → usar `GH_TOKEN` do `.env` (`GITHUB_API_TOKEN` tem scope
+      `project`); REST `/projects/{id}/items` → 404 (só GraphQL funciona). **Antes de mutation
+      de status, consultar o estado atual** — a issue pode já estar em Done (movimento manual
+      do dono).
+    - **Playwright MCP**: não existe `fill` isolado → usar `fill_form`; `navigate
+      {type:"reload"}` é inválido → navegar com a URL explícita; screenshots salvam na raiz da
+      sessão (`.playwright-mcp/` da main, **não** no worktree da componente) → `cp` para
+      `/tmp/opencode`.
+    - **Modelo sem suporte a imagem**: validação visual por **snapshot de a11y (DOM)** é
+      conclusiva; salvar PNG como artefato mesmo assim.
+    - **LSP não cobre worktrees fora da cwd** ("LSP file path must be inside request cwd") →
+      gates JS da Fase 4 = `node --check` + `npm run build` + testes versionados.
+    - **Hook de comentários/docstrings vs convenção do repo**: manter comentário que documenta
+      regra de negócio não óbvia (ex.: `expiresAt` aceita passado = expiração imediata; limpar
+      mantém o estado) ou segue a convenção de bloco por issue do arquivo; remover o redundante
+      (código auto-explicativo).
 
 ## Checklist de verificação do dono (conferir periodicamente)
 

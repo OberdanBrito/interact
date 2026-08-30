@@ -1,7 +1,7 @@
 import { state } from "../core/state.js";
 import { $, initialsOf } from "../core/utils.js";
 import { restoreSession, login, logout, getCurrentUser, restoreInteractions } from "../features/auth/session.js";
-import { renderArchiveTabs, renderChips, renderEnvSelector, renderFeed, resetActiveGroup, resetFilter } from "../features/feed/feed.js";
+import { renderArchiveTabs, renderChips, renderEnvSelector, renderFeed, resetActiveGroup, resetFilter, resetSearch, bindSearchInput } from "../features/feed/feed.js";
 import {
   bindActionContainer,
   toggleLike,
@@ -26,6 +26,7 @@ function enterFeed() {
   renderEnvSelector();
   renderArchiveTabs();
   renderChips();
+  bindSearchInput();
   renderFeed();
   const user = getCurrentUser();
   $("#user-initials").textContent = initialsOf(user.name);
@@ -95,6 +96,7 @@ async function handleLogin(event) {
 function handleLogout() {
   logout();
   resetFilter();
+  resetSearch();
   resetActiveGroup();
   closeSheet(true);
   hideToast();

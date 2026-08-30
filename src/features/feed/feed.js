@@ -12,8 +12,16 @@ const ARCHIVE_VIEWS = [
   { id: "archived", label: "Arquivo" },
 ];
 
+const SEARCH_DEBOUNCE_MS = 250;
+
 export function resetFilter() {
   state.filter = "todas";
+}
+
+export function resetSearch() {
+  state.search = "";
+  const input = $("#search-input");
+  if (input) input.value = "";
 }
 
 export function resetActiveGroup() {
@@ -115,7 +123,10 @@ function sortByDate(posts) {
 }
 
 async function visiblePosts() {
-  const posts = await getPosts(state.activeGroupId, { archive: state.archive });
+  const posts = await getPosts(state.activeGroupId, {
+    archive: state.archive,
+    search: state.search,
+  });
   const filtered =
     state.filter === "todas" ? posts : posts.filter((post) => post.categoryId === state.filter);
   return state.archive === "archived" ? sortByDate(filtered) : sortFeed(filtered);
@@ -140,13 +151,32 @@ export function renderChips() {
   }
 }
 
+let searchBound = false;
+
+export function bindSearchInput() {
+  const input = $("#search-input");
+  if (!input || searchBound) return;
+  searchBound = true;
+  let timer = 0;
+  input.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      state.search = input.value.trim();
+      renderFeed();
+    }, SEARCH_DEBOUNCE_MS);
+  });
+}
+
 export async function renderFeed() {
   const list = $("#post-list");
   const empty = $("#empty-state");
   const userData = getUserData();
   const posts = await visiblePosts();
 
-  if (state.archive === "archived") {
+  if (state.search) {
+    $("#empty-title").textContent = "Nenhum comunicado encontrado para a busca";
+    $("#empty-sub").textContent = `Não há comunicados para "${state.search}".`;
+  } else if (state.archive === "archived") {
     $("#empty-title").textContent = "Nenhum comunicado arquivado";
     $("#empty-sub").textContent =
       "Os comunicados publicados há mais de 30 dias aparecem aqui.";

@@ -2,6 +2,7 @@ export const state = {
   user: null,               // dono: session.js
   userData: null,           // dono: session.js ({ likes: [], read: [] })
   filter: "todas",          // dono: feed.js
+  search: "",               // dono: feed.js (termo de busca por título/autor; I-09)
   activeGroupId: "todas",   // dono: feed.js (ambiente: "todas" ou id de grupo)
   archive: "active",        // dono: feed.js (visão do feed: "active" | "archived")
   deferredPrompt: null,     // dono: pwa.js

@@ -47,6 +47,10 @@
     <symbol id="i-download" viewBox="0 0 24 24">
       <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
     </symbol>
+    <symbol id="i-search" viewBox="0 0 24 24">
+      <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      <path d="M21 21l-4.35-4.35" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    </symbol>
     <symbol id="i-inbox" viewBox="0 0 48 48">
       <rect x="6" y="10" width="36" height="28" rx="4" fill="none" stroke="#DCE7F5" stroke-width="2.5"/>
       <path d="M6 27h9l3 4h12l3-4h9" fill="none" stroke="#DCE7F5" stroke-width="2.5" stroke-linejoin="round"/>
@@ -102,6 +106,12 @@
             <svg width="22" height="22" aria-hidden="true"><use href="#i-logout"/></svg>
           </button>
         </div>
+      </div>
+      <div class="search-bar">
+        <svg class="search-icon" width="16" height="16" aria-hidden="true"><use href="#i-search"/></svg>
+        <input type="search" id="search-input" class="search-input"
+               placeholder="Buscar por título ou autor"
+               aria-label="Buscar comunicados por título ou autor" autocomplete="off">
       </div>
       <div class="env-selector" id="env-selector" hidden></div>
       <nav class="archive-tabs" id="archive-tabs" aria-label="Alternar entre comunicados ativos e arquivados"></nav>

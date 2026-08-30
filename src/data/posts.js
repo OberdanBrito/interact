@@ -51,7 +51,7 @@ export async function login(email, password) {
   };
 }
 
-export async function getPosts(groupId, { archive } = {}) {
+export async function getPosts(groupId, { archive, search } = {}) {
   if (!TOKEN) return [];
   try {
     const params = [];
@@ -60,6 +60,9 @@ export async function getPosts(groupId, { archive } = {}) {
     }
     if (archive === "active" || archive === "archived") {
       params.push(`archive=${archive}`);
+    }
+    if (search) {
+      params.push(`search=${encodeURIComponent(search)}`);
     }
     const url =
       params.length > 0
@@ -75,7 +78,7 @@ export async function getPosts(groupId, { archive } = {}) {
     return posts;
   } catch {
     // offline ou rede indisponível: cai para o cache do IndexedDB
-    return filterCachedByGroup(groupId, archive);
+    return filterCachedByGroup(groupId, archive, search);
   }
 }
 
@@ -88,10 +91,11 @@ export function isPostVisibleToUser(post) {
   return targets.some((g) => (state.user?.groupIds || []).includes(g));
 }
 
-async function filterCachedByGroup(groupId, archive) {
+async function filterCachedByGroup(groupId, archive, search) {
   const cached = await getCachedPosts();
   if (cached.length === 0) return [];
   const cutoff = Date.now() - ARCHIVE_AFTER_DAYS * 24 * 60 * 60 * 1000;
+  const term = (search || "").trim().toLowerCase();
   const visible = cached.filter((post) => {
     if (!isPostVisibleToUser(post)) return false;
     const targets = post.targetGroups || [];
@@ -103,6 +107,11 @@ async function filterCachedByGroup(groupId, archive) {
     const time = new Date(post.dateISO || 0).getTime();
     if (archive === "active" && time < cutoff) return false;
     if (archive === "archived" && time >= cutoff) return false;
+    if (term) {
+      const title = String(post.title || "").toLowerCase();
+      const author = String(post.author?.name || "").toLowerCase();
+      if (!title.includes(term) && !author.includes(term)) return false;
+    }
     return true;
   });
   CACHE = visible;

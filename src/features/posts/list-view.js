@@ -105,10 +105,31 @@ async function handlePublish(postId, root) {
   renderRows(root);
 }
 
+/* Fixa/desfixa um comunicado publicado direto da listagem (I-04). */
+async function handleTogglePin(postId, pinnedAtual, root) {
+  try {
+    await updatePost(postId, { pinned: !pinnedAtual });
+    showToast(
+      pinnedAtual ? "Comunicado desfixado com sucesso" : "Comunicado fixado com sucesso"
+    );
+  } catch {
+    showToast("Não foi possível alternar a fixação do comunicado.");
+  }
+  renderRows(root);
+}
+
 async function openPublishOrDelete(event, root) {
   const publishBtn = event.target.closest(".js-publish");
   if (publishBtn) {
     return handlePublish(publishBtn.dataset.postId, root);
+  }
+  const pinBtn = event.target.closest(".js-pin");
+  if (pinBtn) {
+    return handleTogglePin(
+      pinBtn.dataset.postId,
+      pinBtn.classList.contains("is-active"),
+      root
+    );
   }
   const btn = event.target.closest(".js-delete");
   if (btn) {

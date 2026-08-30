@@ -72,6 +72,10 @@ export function urgentBadgeHTML() {
   return `<span class="badge badge-urgent">${icon("i-alert", 12)} Urgente</span>`;
 }
 
+export function pinnedBadgeHTML() {
+  return `<span class="badge badge-pinned">${icon("i-pin", 12)} Fixado</span>`;
+}
+
 export function targetedBadgeHTML() {
   return `<span class="badge badge-targeted">${icon("i-users", 12)} Direcionado</span>`;
 }
@@ -100,6 +104,7 @@ export function postRowHTML(post) {
           <span class="cell-title-text">${title}</span>
           ${post.status === "agendado" ? scheduledBadgeHTML() : ""}
           ${post.status === "rascunho" ? draftBadgeHTML() : ""}
+          ${post.pinned ? pinnedBadgeHTML() : ""}
           ${post.urgent ? urgentBadgeHTML() : ""}
           ${(post.targetGroups || []).length > 0 ? targetedBadgeHTML() : ""}
         </div>
@@ -127,6 +132,14 @@ export function postRowHTML(post) {
               ? `<button type="button" class="icon-btn icon-btn-publish js-publish" data-post-id="${id}"
                     aria-label="Publicar rascunho: ${title}" title="Publicar">
                   ${icon("i-megaphone")}
+                </button>`
+              : ""
+          }
+          ${
+            post.status === "publicado"
+              ? `<button type="button" class="icon-btn icon-btn-pin ${post.pinned ? "is-active" : ""} js-pin" data-post-id="${id}"
+                    aria-label="${post.pinned ? `Desfixar: ${title}` : `Fixar: ${title}`}" title="${post.pinned ? "Desfixar" : "Fixar"}">
+                  ${icon("i-pin")}
                 </button>`
               : ""
           }

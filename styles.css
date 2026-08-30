@@ -397,6 +397,11 @@ button {
   color: var(--navy-800);
 }
 
+.icon-btn-pin.is-active {
+  background: var(--navy-100);
+  color: var(--navy-800);
+}
+
 .icon-btn-danger:hover {
   background: var(--danger-bg);
   color: var(--danger);
@@ -708,6 +713,12 @@ button {
   color: var(--navy-800);
   background: var(--warning-bg);
   border: 1px solid color-mix(in srgb, var(--warning-bg) 60%, #d97706);
+}
+
+.badge-pinned {
+  color: var(--navy-800);
+  background: var(--navy-100);
+  border: 1px solid color-mix(in srgb, var(--navy-100) 60%, var(--navy-500));
 }
 
 .badge-status-active {

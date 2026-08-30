@@ -92,6 +92,38 @@ export function expiredBadgeHTML() {
   return `<span class="badge badge-expired">${icon("i-alert", 12)} Expirado</span>`;
 }
 
+export function formatFileSize(bytes) {
+  const n = Number(bytes) || 0;
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function attachmentListHTML(attachments) {
+  const list = attachments || [];
+  if (list.length === 0) return "";
+  return `
+    <div class="attachment-list" data-attachment-list>
+      ${list
+        .map(
+          (a) => `
+        <span class="attachment-item" data-attachment-id="${escapeHTML(a.id)}">
+          <span class="attachment-name">${escapeHTML(a.name || "—")}</span>
+          <span class="attachment-meta">${escapeHTML(a.type || "")} · ${escapeHTML(
+            formatFileSize(a.size)
+          )}</span>
+          <button type="button" class="icon-btn attachment-remove js-remove-attachment"
+                  data-attachment-id="${escapeHTML(a.id)}" aria-label="Remover anexo ${escapeHTML(
+            a.name || ""
+          )}">
+            ${icon("i-x", 14)}
+          </button>
+        </span>`
+        )
+        .join("")}
+    </div>`;
+}
+
 export function readModeLabel(readMode) {
   return readMode === "ack" ? "Confirmação" : "Automática";
 }

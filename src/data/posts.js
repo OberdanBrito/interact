@@ -98,6 +98,34 @@ export async function deletePost(id) {
   return res.ok;
 }
 
+// Anexo (I-03): imagem/anexo são enviados via FormData — o Content-Type multipart
+// (com boundary) é definido pelo browser; não setar Authorization+JSON manualmente.
+export async function uploadAttachment(postId, file) {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_BASE}/api/posts/${postId}/attachments`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${TOKEN}` },
+    body: form,
+  });
+  const data = res.ok ? await res.json() : null;
+  if (!res.ok) {
+    throw new Error(data?.error || "Não foi possível anexar o arquivo.");
+  }
+  return data;
+}
+
+export async function deleteAttachment(postId, attachmentId) {
+  const res = await fetch(
+    `${API_BASE}/api/posts/${postId}/attachments/${encodeURIComponent(attachmentId)}`,
+    {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${TOKEN}` },
+    }
+  );
+  return res.ok;
+}
+
 export function getCategoryLabel(categoryId) {
   const cat = CATEGORIES.find((c) => c.id === categoryId);
   return cat ? cat.label : categoryId;

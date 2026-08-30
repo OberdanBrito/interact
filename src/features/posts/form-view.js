@@ -1,9 +1,19 @@
-import { CATEGORIES, getPost, createPost, updatePost, getInteractionAggregate } from "../../data/posts.js";
+import { CATEGORIES, getPost, createPost, updatePost, getInteractionAggregate, uploadAttachment, deleteAttachment } from "../../data/posts.js";
 import { listGroups, getRecipientCount } from "../../data/groups.js";
 import { state } from "../../core/state.js";
 import { $, escapeHTML } from "../../core/utils.js";
-import { spinnerHTML, sendConfirmModalHTML } from "../../ui/templates.js";
+import { spinnerHTML, sendConfirmModalHTML, attachmentListHTML } from "../../ui/templates.js";
 import { showToast } from "../../ui/toast.js";
+
+// Limites de anexo espelhando o backend (fonte de verdade). Ajuste via env no backend.
+const MAX_ATTACHMENT_MB = 10;
+const ALLOWED_ATTACHMENT_TYPES = [
+  "application/pdf",
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+];
 
 const FIELDS = ["title", "category", "author-name", "author-role", "body"];
 
@@ -265,6 +275,20 @@ export async function render(root, { id } = {}) {
         <p class="field-error" id="${errorId("body")}" hidden></p>
       </div>
 
+      <div class="field">
+        <label class="field-label" for="f-attachment">Anexos (opcional)</label>
+        <input class="input" id="f-attachment" data-field="attachment" type="file"
+               accept="${ALLOWED_ATTACHMENT_TYPES.join(",")}"
+               aria-describedby="f-attachment-hint ${errorId("attachment")}">
+        <p class="field-hint" id="f-attachment-hint">
+          Envie um arquivo PDF ou uma imagem (PNG, JPEG, GIF, WebP). Limite de ${MAX_ATTACHMENT_MB} MB.
+        </p>
+        <p class="field-error" id="${errorId("attachment")}" hidden></p>
+        <div id="attachment-list" data-attachment-container>
+          ${attachmentListHTML(values.attachments)}
+        </div>
+      </div>
+
       <div class="form-actions">
         <a class="btn btn-ghost" href="#/posts">Cancelar</a>
         ${
@@ -291,7 +315,74 @@ export async function render(root, { id } = {}) {
     urgent: root.querySelector("#f-urgent"),
     publishAt: root.querySelector("#f-publish-at"),
     expiresAt: root.querySelector("#f-expires-at"),
+    attachment: root.querySelector("#f-attachment"),
   };
+  const attachmentContainer = root.querySelector("[data-attachment-container]");
+  const currentAttachments = [...(values.attachments || [])];
+  let pendingFile = null;
+  let currentPostId = editing ? id : null;
+
+  function renderAttachments() {
+    attachmentContainer.innerHTML = attachmentListHTML(currentAttachments);
+  }
+
+  function isFileAllowed(file) {
+    if (!file) return true;
+    if (file.size > MAX_ATTACHMENT_MB * 1024 * 1024) {
+      return { ok: false, message: `Arquivo muito grande. Limite máximo é ${MAX_ATTACHMENT_MB} MB.` };
+    }
+    if (!ALLOWED_ATTACHMENT_TYPES.includes(file.type)) {
+      return { ok: false, message: "Tipo de arquivo não permitido. Envie PDF ou imagem (PNG, JPEG, GIF, WebP)." };
+    }
+    return { ok: true };
+  }
+
+  async function uploadPendingFile(postId) {
+    if (!pendingFile) return;
+    const file = pendingFile;
+    pendingFile = null;
+    try {
+      const attachment = await uploadAttachment(postId, file);
+      currentAttachments.push(attachment);
+      renderAttachments();
+    } catch (err) {
+      showToast(err.message || "Erro ao anexar o arquivo.");
+    }
+  }
+
+  async function removeAttachmentHandler(attachmentId) {
+    const attachment = currentAttachments.find((a) => a.id === attachmentId);
+    if (!attachment) return;
+    const postIdForRemove = currentPostId;
+    if (postIdForRemove) {
+      try {
+        await deleteAttachment(postIdForRemove, attachmentId);
+      } catch {
+        /* melhor esforço */
+      }
+    }
+    const idx = currentAttachments.findIndex((a) => a.id === attachmentId);
+    if (idx >= 0) currentAttachments.splice(idx, 1);
+    renderAttachments();
+  }
+
+  input.attachment.addEventListener("change", () => {
+    const file = input.attachment.files?.[0] || null;
+    const res = isFileAllowed(file);
+    if (!res.ok) {
+      showError(input.attachment, res.message);
+      input.attachment.value = "";
+      return;
+    }
+    clearErrors(root);
+    pendingFile = file;
+  });
+
+  attachmentContainer.addEventListener("click", async (event) => {
+    const btn = event.target.closest(".js-remove-attachment");
+    if (!btn) return;
+    await removeAttachmentHandler(btn.dataset.attachmentId);
+  });
 
   form.addEventListener("input", (event) => {
     const field = event.target.closest("[data-field]");
@@ -327,10 +418,17 @@ export async function render(root, { id } = {}) {
     setLoading(true);
     setTimeout(async () => {
       try {
+        let postId = id;
         if (editing) {
           await updatePost(id, data);
+          postId = id;
         } else {
-          await createPost(data);
+          const created = await createPost(data);
+          postId = created?.id;
+          currentPostId = postId;
+        }
+        if (pendingFile && postId) {
+          await uploadPendingFile(postId);
         }
         showToast(
           kind === "draft"

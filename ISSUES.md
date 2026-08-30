@@ -124,7 +124,7 @@ fila funcional deste documento.
 - **Prioridade:** Baixa
 - **Esforço:** S (≤ 1 dia)
 - **Status:** Aberto
-- **Decisão/Obrigatoriedade:** `expiresAt` **opcional**; expirado = `expiresAt < now`; colaborador NÃO vê, admin vê com selo "Expirado" (reativar = limpar `expiresAt`); interação com I-12 (histórico) a resolver.
+- **Decisão/Obrigatoriedade:** `expiresAt` **opcional**; expirado = `expiresAt < now`; colaborador NÃO vê, admin vê com selo "Expirado" (reativar = limpar `expiresAt`); interação com I-12 (histórico) a resolver. **Após I-12:** comunicado expirado **recente** (dateISO dentro da janela ativa de 30 dias) ficaria invisível — nem "Ativo" nem "Arquivo" —; decisão pendente: expirado vai para o Arquivo (novo `?archive`? ou filtro extra) ou sai do produto.
 - **Critérios de aceite:**
   - [ ] Campo `expiresAt` opcional; colaborador não vê expirados; admin vê com selo "Expirado"
   - [ ] Admin vê indicador "Expirado" na listagem e pode reativar (limpar `expiresAt`)
@@ -184,7 +184,8 @@ fila funcional deste documento.
 - **Critérios de aceite:**
   - [ ] Campo de busca no feed; digitar filtra por título/autor via `?search=`
   - [ ] Busca respeita visibilidade (grupos) e o seletor de ambiente ativo
-  - [ ] Offline: busca cai para o cache do IndexedDB (filtro local)
+  - [ ] Busca funciona **dentro do Arquivo** (critério I-12): a UI de busca deve combinar `?search` com `?archive=active|archived` da visão atual — hoje a busca no arquivo só existe no nível da API
+  - [ ] Offline: busca cai para o cache do IndexedDB (filtro local, incluindo o corte por idade da I-12)
 
 ### I-10 — Paginação / infinite scroll
 - **Descrição:** o feed carrega todos os comunicados de uma vez. Adicionar paginação (limit/offset ou cursor) para escalar com volume.
@@ -196,6 +197,7 @@ fila funcional deste documento.
   - [ ] `GET /api/posts` aceita `limit`/`offset` (defaults compatíveis com o comportamento atual)
   - [ ] PWA carrega mais posts ao rolar (infinite scroll) sem duplicar
   - [ ] Ordenação inteligente e badge continuam corretos com dados paginados
+  - [ ] **Após I-12:** paginação deve respeitar a visão atual — request com `?archive` e ordenação da visão (sortFeed no "Ativos", `sortByDate` no "Arquivo")
 
 ### I-11 — Marcar como não-lido
 - **Descrição:** permitir ao colaborador reverter a leitura de um comunicado (hoje só marca como lido).
@@ -219,6 +221,7 @@ fila funcional deste documento.
 - **Status:** Concluído
 - **Registro:** backend `d024379` + `64f402c` (branch `backend`), frontend_pwa `20cc5db` + `a499a56` (branch `frontend_pwa`). Verificado por teste de integração (Mongo real, 11/11) e validação visual (Playwright :5173). OpenSpec arquivado em `openspec/changes/archive/2026-08-29-arquivo-de-comunicados`.
 - **Decisão:** "antigo" = publicado há ≥ 30 dias (`ARCHIVE_AFTER_DAYS`, env-overridable), corte derivado da idade via `dateISO` — **sem** flag/arquivamento manual; aba/toggle "Ativos | Arquivo" no feed; admin ignora `?archive`; sem parâmetro preserva o comportamento atual; busca satisfeita no nível da API (PWA não tem UI de busca).
+- **Dívida técnica:** `ARCHIVE_AFTER_DAYS` vive em 2 lugares (env do backend + constante `src/data/posts.js` no PWA). Se divergirem em prod, a UI rotula errado — sem enforcement (candidato a endpoint de config ou nota na I-10/Infra).
 - **Critérios de aceite:**
   - [x] Filtro/aba de arquivo lista comunicados antigos sem poluir o feed principal
   - [x] Busca e visibilidade funcionam dentro do arquivo
@@ -235,6 +238,7 @@ fila funcional deste documento.
 - **Esforço:** M (2-3 dias)
 - **Status:** Aberto
 - **Contexto atual:** endpoint `GET /api/interactions/summary` JÁ EXISTE (`{ [postId]: { reads, likes } }`); falta adicionar filtros de período/grupo e a tela de dashboard. **Não re-implementar o endpoint.**
+- **Após I-12:** o dashboard deve incluir comunicados arquivados no histórico (filtro por período cobrindo `dateISO` antigos) — decisão se arquivados entram nos totais por default.
 - **Critérios de aceite:**
   - [ ] `GET /api/interactions/summary` aceita filtros de período (`desde`/`ate`) e `groupId`; retorna totais por comunicado/grupo
   - [ ] Tela de dashboard com cards e ranking de comunicados mais/menos lidos

@@ -151,15 +151,18 @@ fila funcional deste documento.
   - [ ] Clique no push abre o comunicado no PWA
 
 ### I-07 — Atualização em tempo real de novos comunicados
-- **Descrição:** o PWA hoje busca posts apenas no load/render. Adicionar polling periódico (ou SSE/websocket) para novos comunicados aparecerem sem reload manual.
-- **Componentes:** `frontend_pwa` (data/posts.js, feed.js), `backend` (opcional: SSE)
+- **Descrição:** o PWA hoje busca posts apenas no load/render. Esta issue entrega o canal de tempo real compartilhado (`GET /api/events`, SSE) — reutilizado pela I-14 — e o consumo desse canal no feed do colaborador.
+- **Componentes:** `backend` (`GET /api/events` SSE + `EventEmitter`), `frontend_pwa` (data/posts.js, feed.js)
 - **Prioridade:** Média
-- **Esforço:** M (2-3 dias)
+- **Esforço:** G (revisado de M — issue passou a incluir a infraestrutura compartilhada, não só o consumo no PWA)
 - **Status:** Aberto
+- **Relação:** I-14 depende desta (só assina `interaction:changed`, não reimplementa conexão). Recomenda-se concluir antes ou junto da I-10 (posts novos via SSE não podem desalinhar o cursor de paginação).
 - **Critérios de aceite:**
-  - [ ] Novo comunicado publicado aparece no feed do colaborador elegível em ≤ 60s sem interação
-  - [ ] Polling pausa quando a aba está oculta (economia de bateria)
+  - [ ] `GET /api/events` (SSE) autenticado, emite `post:new`, `post:updated`, `post:expired`
+  - [ ] Novo comunicado aparece no feed elegível em ≤ 5s
+  - [ ] Reconexão automática + fallback para polling (60s) se SSE falhar
   - [ ] Sem regressão no cache offline e no badge
+  - [ ] Módulo de conexão reutilizável pela I-14
 
 ### I-08 — E-mail como fallback de notificação
 - **Descrição:** enviar e-mail ao colaborador quando um comunicado for direcionado a ele (fallback para quem não usa o app).
@@ -192,16 +195,18 @@ fila funcional deste documento.
   - [x] Offline: busca cai para o cache do IndexedDB (filtro local, incluindo o corte por idade da I-12)
 
 ### I-10 — Paginação / infinite scroll
-- **Descrição:** o feed carrega todos os comunicados de uma vez. Adicionar paginação (limit/offset ou cursor) para escalar com volume.
-- **Componentes:** `backend` (rota posts), `frontend_pwa` (feed.js), `frontend_admin` (list-view)
+- **Descrição:** o feed carrega todos os comunicados de uma vez. Adicionar paginação por cursor para escalar com volume. **Escopo revisado:** ordenação por fixado/urgente/não-lido precisa migrar do cliente (`sortFeed()`) para o backend — paginar sem isso quebra a priorização de não-lidos entre páginas.
+- **Componentes:** `backend` (rota posts — paginação + ordenação movida pro Mongo), `frontend_pwa` (feed.js — remove sort local), `frontend_admin` (list-view)
 - **Prioridade:** Média
-- **Esforço:** M (2-3 dias)
+- **Esforço:** G (revisado de M — o redesenho da ordenação no backend é o item que muda a estimativa)
 - **Status:** Aberto
+- **Relação:** recomenda-se implementar depois da I-07 (SSE), para já nascer compatível com posts chegando em tempo real.
 - **Critérios de aceite:**
-  - [ ] `GET /api/posts` aceita `limit`/`offset` (defaults compatíveis com o comportamento atual)
-  - [ ] PWA carrega mais posts ao rolar (infinite scroll) sem duplicar
-  - [ ] Ordenação inteligente e badge continuam corretos com dados paginados
-  - [ ] **Após I-12:** paginação deve respeitar a visão atual — request com `?archive` e ordenação da visão (sortFeed no "Ativos", `sortByDate` no "Arquivo")
+  - [ ] `GET /api/posts` aceita paginação por cursor (não offset); defaults compatíveis com o comportamento atual
+  - [ ] Ordenação por fixado/urgente/não-lido acontece no backend, não mais no `sortFeed()` do cliente
+  - [ ] PWA carrega mais posts ao rolar sem duplicar e sem "pulos" de não-lidos entre páginas
+  - [ ] Compatível com `?search` (I-09) e `?archive` (I-12) já existentes
+  - [ ] Compatível com posts novos chegando via SSE (I-07) sem desalinhar o cursor
 
 ### I-11 — Marcar como não-lido
 - **Descrição:** permitir ao colaborador reverter a leitura de um comunicado (hoje só marca como lido).
@@ -250,24 +255,30 @@ fila funcional deste documento.
   - [ ] Comunicado sem interações renderiza 0 (não "null")
 
 ### I-14 — Recibo de leitura individual em tempo real
-- **Descrição:** hoje o admin vê quem leu/curtiu (agregado por usuário), mas sem atualização em tempo real. Requer polling/SSE no admin.
-- **Componentes:** `backend` (SSE opcional), `frontend_admin` (features/analytics/detail-view)
+- **Descrição:** hoje o admin vê quem leu/curtiu, mas sem atualização em tempo real. Assina o canal SSE estabelecido na I-07 — não cria um segundo mecanismo.
+- **Componentes:** `backend` (emite `interaction:changed` no `EventEmitter` da I-07), `frontend_admin` (features/analytics/detail-view)
 - **Prioridade:** Baixa
-- **Esforço:** M (2-3 dias)
+- **Esforço:** S (revisado de M — a parte cara, a infra SSE, já é paga pela I-07)
 - **Status:** Aberto
+- **Relação:** depende da I-07 estar concluída. Não iniciar antes.
 - **Critérios de aceite:**
-  - [ ] Lista de quem leu/curtiu atualiza sem reload manual (≤ 60s)
+  - [ ] Lista de quem leu/curtiu atualiza sem reload manual (≤ 5s)
+  - [ ] Atualização escopada ao post aberto na tela
   - [ ] Sem regressão no endpoint `GET /api/interactions/members`
+  - [ ] Degrada para o comportamento estático atual se a conexão SSE cair
 
 ### I-15 — Cobrança de leitura (lembrete para quem não leu)
-- **Descrição:** permitir ao admin "cobrar" leitura de comunicados importantes — listar quem não leu e (futuramente) re-notificar.
-- **Componentes:** `backend` (rota interactions), `frontend_admin` (features/analytics)
+- **Descrição:** permitir ao admin "cobrar" leitura de comunicados importantes. "Quem não leu" é o complemento entre a audiência do post (`targetGroups`/broadcast) e quem já leu — `members` só lista quem tem registro de interação, não a ausência dele.
+- **Componentes:** `backend` (rota interactions — cruza audiência com `members`), `frontend_admin` (features/analytics)
 - **Prioridade:** Baixa
-- **Esforço:** S (≤ 1 dia)
+- **Esforço:** M (revisado de S — resolver a audiência completa é trabalho novo, hoje só existe implícito no filtro do `GET /api/posts`)
 - **Status:** Aberto
+- **Relação:** complementa I-14 (mesma tela/área); fazer sentido em sequência, I-14 primeiro.
 - **Critérios de aceite:**
-  - [ ] Tela "Quem não leu" por comunicado (complemento do members atual)
-  - [ ] Ação de cobrança registra evento (auditável) e lista os destinatários pendentes
+  - [ ] Tela "Quem não leu" cruza audiência do post com `members`
+  - [ ] Funciona para posts broadcast e para posts direcionados a grupos
+  - [ ] Ação de cobrança registra evento auditável e lista pendentes
+  - [ ] Sem disparo automático de notificação nesta fase (depende de I-06/I-08)
 
 ---
 

@@ -1,6 +1,7 @@
 import { state } from "../../core/state.js";
 import { $, STORAGE_KEYS, storageGet, storageSet } from "../../core/utils.js";
-import { getCategories, getPosts, getUserGroups } from "../../data/posts.js";
+import { getCategories, getPosts, getUserGroups, applyRealtimeEvent, getVisibleCacheFeed } from "../../data/posts.js";
+import { connect, disconnect, on } from "../../data/events.js";
 import { getUserData } from "../auth/session.js";
 import { refreshBadge } from "../notifications/badge.js";
 import { postCardHTML } from "./templates.js";
@@ -167,11 +168,10 @@ export function bindSearchInput() {
   });
 }
 
-export async function renderFeed() {
+function renderPostList(posts) {
   const list = $("#post-list");
   const empty = $("#empty-state");
   const userData = getUserData();
-  const posts = await visiblePosts();
 
   if (state.search) {
     $("#empty-title").textContent = "Nenhum comunicado encontrado para a busca";
@@ -196,4 +196,41 @@ export async function renderFeed() {
     .join("");
 
   refreshBadge();
+}
+
+export async function renderFeed() {
+  const posts = await visiblePosts();
+  renderPostList(posts);
+}
+
+let realtimeBound = false;
+
+export function startRealtime() {
+  if (realtimeBound) return;
+  realtimeBound = true;
+  connect(renderFeed);
+  on("post:new", (post) => {
+    applyRealtimeEvent("post:new", post);
+    renderFeedFromCache();
+  });
+  on("post:updated", (post) => {
+    applyRealtimeEvent("post:updated", post);
+    renderFeedFromCache();
+  });
+  on("post:expired", (data) => {
+    applyRealtimeEvent("post:expired", data);
+    renderFeedFromCache();
+  });
+}
+
+export function stopRealtime() {
+  disconnect();
+  realtimeBound = false;
+}
+
+function renderFeedFromCache() {
+  const posts = getVisibleCacheFeed();
+  const sorted =
+    state.archive === "archived" ? sortByDate(posts) : sortFeed(posts);
+  renderPostList(sorted);
 }

@@ -44,6 +44,14 @@ export async function getCachedPost(id) {
   }
 }
 
+export async function removeCachedPost(id) {
+  try {
+    await db.posts.delete(id);
+  } catch (err) {
+    console.error("Erro ao remover post do cache:", err.message);
+  }
+}
+
 // Limpa todo o cache (usado no logout para não vazar dados entre usuários).
 export async function clearCache() {
   try {

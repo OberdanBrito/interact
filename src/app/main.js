@@ -1,7 +1,7 @@
 import { state } from "../core/state.js";
 import { $, initialsOf } from "../core/utils.js";
 import { restoreSession, login, logout, getCurrentUser, restoreInteractions } from "../features/auth/session.js";
-import { renderArchiveTabs, renderChips, renderEnvSelector, renderFeed, resetActiveGroup, resetFilter, resetSearch, bindSearchInput } from "../features/feed/feed.js";
+import { renderArchiveTabs, renderChips, renderEnvSelector, renderFeed, resetActiveGroup, resetFilter, resetSearch, bindSearchInput, startRealtime, stopRealtime } from "../features/feed/feed.js";
 import {
   bindActionContainer,
   toggleLike,
@@ -28,6 +28,7 @@ function enterFeed() {
   renderChips();
   bindSearchInput();
   renderFeed();
+  startRealtime();
   const user = getCurrentUser();
   $("#user-initials").textContent = initialsOf(user.name);
   $("#user-avatar").setAttribute("aria-label", `Conta de ${user.name}`);
@@ -95,6 +96,7 @@ async function handleLogin(event) {
 
 function handleLogout() {
   logout();
+  stopRealtime();
   resetFilter();
   resetSearch();
   resetActiveGroup();

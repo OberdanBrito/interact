@@ -2,7 +2,7 @@
    Categorias permanecem estáticas; posts e autenticação vêm da API. */
 
 import { state } from "../core/state.js";
-import { cachePosts, getCachedPosts, getCachedPost } from "./cache.js";
+import { cachePosts, getCachedPosts, getCachedPost, removeCachedPost } from "./cache.js";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3002";
 
@@ -132,6 +132,66 @@ export async function getPostByIdAsync(id) {
   const inMemory = getPostById(id);
   if (inMemory) return inMemory;
   return getCachedPost(id);
+}
+
+/* --- Tempo real (I-07): aplica eventos do canal SSE ------------------- */
+
+export function applyRealtimeEvent(name, postData) {
+  if (name === "post:new") {
+    if (!isPostVisibleToUser(postData)) return CACHE;
+    replaceOrPush(postData);
+    cachePosts([postData]);
+  } else if (name === "post:updated") {
+    const idx = CACHE.findIndex((p) => p.id === postData.id);
+    if (idx === -1) {
+      if (!isPostVisibleToUser(postData)) return CACHE;
+      CACHE.unshift(postData);
+    } else {
+      CACHE[idx] = postData;
+    }
+    cachePosts([postData]);
+  } else if (name === "post:expired") {
+    CACHE = CACHE.filter((p) => p.id !== postData.id);
+    removeCachedPost(postData.id);
+  }
+  return CACHE;
+}
+
+function replaceOrPush(postData) {
+  const idx = CACHE.findIndex((p) => p.id === postData.id);
+  if (idx !== -1) {
+    CACHE[idx] = postData;
+    return;
+  }
+  CACHE.unshift(postData);
+}
+
+// Retorna o recorte da visão atual, não ordenado (feed.js aplica sortFeed/sortByDate).
+export function getVisibleCacheFeed() {
+  const { activeGroupId, archive, search, filter } = state;
+  const cutoff = Date.now() - ARCHIVE_AFTER_DAYS * 24 * 60 * 60 * 1000;
+  const term = (search || "").trim().toLowerCase();
+  return CACHE.filter((post) => {
+    if (!isPostVisibleToUser(post)) return false;
+    const targets = post.targetGroups || [];
+    if (
+      targets.length > 0 &&
+      activeGroupId !== "todas" &&
+      !targets.includes(activeGroupId)
+    ) {
+      return false;
+    }
+    const time = new Date(post.dateISO || 0).getTime();
+    if (archive === "active" && time < cutoff) return false;
+    if (archive === "archived" && time >= cutoff) return false;
+    if (term) {
+      const title = String(post.title || "").toLowerCase();
+      const author = String(post.author?.name || "").toLowerCase();
+      if (!title.includes(term) && !author.includes(term)) return false;
+    }
+    if (filter !== "todas" && post.categoryId !== filter) return false;
+    return true;
+  });
 }
 
 export function getCategories() {

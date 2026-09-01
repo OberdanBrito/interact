@@ -61,6 +61,7 @@ fila funcional deste documento.
 | Issue | GitHub | Projeto |
 |---|---|---|
 | Deploy de produção (CI/CD, PM2/Docker/systemd, secrets, HTTPS, backup) | [#16](https://github.com/OberdanBrito/interact/issues/16) | Infra (#10) |
+| Provedor de e-mail (integração/configuração p/ envio de comunicado — depende da I-08) | [#17](https://github.com/OberdanBrito/interact/issues/17) | Infra (#10) |
 
 ---
 
@@ -167,20 +168,20 @@ fila funcional deste documento.
 
 ### I-08 — E-mail como fallback de notificação
 - **Descrição:** enviar e-mail ao colaborador quando um comunicado for publicado (publicar agora, publicar rascunho ou liberação de agendado via scheduler I-01). Canal de alcance (fallback): **nesta fase envia-se a todo o público-alvo** — não há rastreio de "uso do app", então não dá para filtrar só quem não usa.
-- **Componentes:** `backend` (serviço de e-mail + fila + integração com rota de posts e scheduler I-01), `frontend_pwa` (deep link do comunicado)
+- **Componentes:** `backend` (fila de envio + integração com rota de posts e scheduler I-01, usando o adaptador da **#17**), `frontend_pwa` (deep link do comunicado)
 - **Prioridade:** Baixa
-- **Esforço:** L (1 semana+) — parte crítica é a config externa (Gmail API/DWD) + fila/retry
+- **Esforço:** L (1 semana+) — depende da **#17** (provedor) + fila/retry
 - **Status:** Aberto
-- **Transporte (decisão):** Gmail API no Google Cloud (`interact-enterprise`, **já ativado**), com service account (`interact-enterprise-firebase-adminsdk-fbsvc-*.json`). **Destinatários: qualquer domínio** (sem requisito de Workspace). **Remetente:** Opção A (service account + Domain-Wide Delegation, exige domínio próprio no Google Workspace) **ou** Opção B (OAuth2 de conta Google, sem Workspace). **Pré-condição:** habilitar Gmail API e escolher o caminho do remetente.
+- **Provedor (dependência):** a **I-08 NÃO decide o provedor**. Escolha/integração ficam na **#17 — Provedor de e-mail** (Infra #10). A I-08 apenas consome o adaptador `sendEmail` configurado (`MAIL_PROVIDER`), sem acoplamento.
 - **Obrigatoriedade:** e-mail dispara **somente na transição para `published: true`** (publicar agora, publicar rascunho, liberar agendado); nunca em rascunho/edição/agendado não liberado; público = broadcast ∪ grupos; **dedupe por usuário**.
 - **Fila/retry:** fila **persistente** (MongoDB, ex.: `email_queue`), backoff exponencial (máx. 4), falha final loga alerta e **não bloqueia a publicação**.
-- **Link:** `PWA_BASE_URL` (env) + deep link `#/post/<id>` + `?groupId=` quando direcionado; chave e `PWA_BASE_URL` em **env/secret** (nunca commitar — a chave contém `private_key`).
+- **Link:** `PWA_BASE_URL` (env) + deep link `#/post/<id>` + `?groupId=` quando direcionado.
 - **Critérios de aceite:**
   - [ ] Publicar comunicado dispara e-mail para o público-alvo (broadcast ∪ grupos), com dedupe por usuário
   - [ ] Falha de envio não bloqueia a publicação (fila + retry com backoff exponencial)
   - [ ] E-mail contém título, resumo e link direto para o comunicado no PWA (`PWA_BASE_URL` + deep link)
   - [ ] Agendado dispara e-mail no momento da liberação (não na criação)
-  - [ ] Assinatura/config via service account do Google Cloud + DWD (validado como pré-condição); chave nunca commitada
+  - [ ] Envio usa o adaptador configurado na issue #17 (sem decidir o provedor aqui)
 
 ---
 

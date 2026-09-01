@@ -23,7 +23,7 @@ implementar e como verificar. Atualize o status ao iniciar/concluir cada item.
 | Baixa | 3 | 0 | 3 | 0 | 0 |
 | — | 0 | 0 | 0 | 1 | 3 |
 
-**Total: 18 issues** (2 Alta — 1 aberta, 1 concluída —, 6 Média — 4 abertas, 2 concluídas —, 6 Baixa — 3 abertas, 3 concluídas —, 1 Adiada, 3 Fora de escopo)
+**Total: 19 issues** (2 Alta — 1 aberta, 1 concluída —, 6 Média — 4 abertas, 2 concluídas —, 6 Baixa — 3 abertas, 3 concluídas —, 1 Ab. sem prioridade (multi-tenant #18), 1 Adiada, 3 Fora de escopo)
 
 ## Vínculo com GitHub
 
@@ -49,6 +49,7 @@ mantém o contexto completo (descrição, componentes, critérios de aceite).
 | I-13 Dashboard global de métricas | [#10](https://github.com/OberdanBrito/interact/issues/10) |
 | I-14 Recibo de leitura em tempo real | [#13](https://github.com/OberdanBrito/interact/issues/13) |
 | I-15 Cobrança de leitura | [#15](https://github.com/OberdanBrito/interact/issues/15) |
+| Multi-Tenant — fundação (SaaS) | [#18](https://github.com/OberdanBrito/interact/issues/18) |
 
 Labels usadas: `prioridade: alta|media|baixa`, `area: publicacao|entrega|leitura|metricas`, `adiado`.
 
@@ -61,7 +62,30 @@ fila funcional deste documento.
 | Issue | GitHub | Projeto |
 |---|---|---|
 | Deploy de produção (CI/CD, PM2/Docker/systemd, secrets, HTTPS, backup) | [#16](https://github.com/OberdanBrito/interact/issues/16) | Infra (#10) |
-| Provedor de e-mail configurável pelo cliente (BYO provider p/ envio de comunicado; consumido pela I-08; decisão de produto A×B em aberto) | [#17](https://github.com/OberdanBrito/interact/issues/17) | Infra (#10) |
+| Provedor de e-mail por cliente/tenant (BYO provider; depende da multi-tenant #18; consumido pela I-08) | [#17](https://github.com/OberdanBrito/interact/issues/17) | Infra (#10) |
+
+---
+
+## Fundação — Multi-Tenant (SaaS)
+
+### MT-18 — Fundação de isolamento por cliente/empresa
+- **Descrição:** tornar o Interact **multi-tenant (SaaS)**: cada cliente/empresa é um **tenant isolado**
+  (usuários, grupos, comunicados, interações e configurações próprias, ex.: provedor de e-mail #17).
+  É a fundação que precede a #17 (provedor por cliente) e a I-08 (e-mail fallback).
+- **Componentes:** `backend` (modelo/camada de Tenant + `tenantId` em todas as entidades + resolução do tenant + auth por tenant), `frontend_admin` (admin por tenant), `frontend_pwa` (PWA/feed por tenant), `infra` (domínios/subdomínios por tenant)
+- **Prioridade:** Alta
+- **Esforço:** XL — afeta praticamente todas as features (I-01…I-15), que passam a exigir escopo por tenant
+- **Status:** Aberto
+- **Relação:** a **#17** (provedor de e-mail por tenant) e a **I-08** dependem desta fundação.
+- **Critérios de aceite:**
+  - [ ] Modelo de Tenant implementado (coleção + `tenantId` em todas as entidades de dados)
+  - [ ] Resolução do tenant (subdomínio/domínio personalizado + login por tenant)
+  - [ ] Isolação de dados entre tenants — nenhuma rota vaza dados de um tenant para outro (posts, interações, members/summary)
+  - [ ] Auth por tenant (JWT escopado; admin e colaborador)
+  - [ ] Admin por tenant (cada empresa gerencia só seus dados)
+  - [ ] PWA/feed por tenant (cache/badge por tenant)
+  - [ ] Configuração por tenant (ex.: provedor de e-mail da #17, domínio, branding)
+  - [ ] Migração dos dados atuais para um tenant padrão (com documentação de rollout)
 
 ---
 

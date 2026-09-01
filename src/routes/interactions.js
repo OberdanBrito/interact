@@ -129,9 +129,50 @@ router.get("/members", requireAdmin, async (req, res) => {
 });
 
 // GET /api/interactions/summary — admin: métricas de todos os posts em uma chamada
+//   Filtros opcionais (retrocompatíveis): desde/ate (ISO) e groupId.
 router.get("/summary", requireAdmin, async (req, res) => {
+  const { desde, ate, groupId } = req.query;
+
+  const parseDate = (value) => {
+    if (value === undefined) return null;
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? "invalid" : d;
+  };
+  const desdeDate = parseDate(desde);
+  const ateDate = parseDate(ate);
+  if (desdeDate === "invalid" || ateDate === "invalid") {
+    return res.status(400).json({ error: "Data inválida" });
+  }
+
   try {
-    const interactions = await Interaction.find({}).lean();
+    let interactions = await Interaction.find({}).lean();
+
+    if (desdeDate || ateDate) {
+      const inRange = (d) => {
+        if (!d) return false;
+        const time = new Date(d).getTime();
+        if (desdeDate && time < desdeDate.getTime()) return false;
+        if (ateDate && time > ateDate.getTime()) return false;
+        return true;
+      };
+      interactions = interactions.filter((i) => inRange(i.readAt) || inRange(i.likedAt));
+    }
+
+    if (groupId) {
+      const userIds = [...new Set(interactions.map((i) => String(i.userId)))];
+      const users = userIds.length
+        ? await User.find({ _id: { $in: userIds } }).select("groupIds").lean()
+        : [];
+      const groupIdsByUser = new Map(
+        users.map((u) => [String(u._id), u.groupIds ?? []])
+      );
+      interactions = interactions.filter((i) =>
+        (groupIdsByUser.get(String(i.userId)) ?? []).some(
+          (g) => String(g) === String(groupId)
+        )
+      );
+    }
+
     const summary = {};
     for (const i of interactions) {
       const slot = summary[i.postId] ?? { reads: 0, likes: 0 };

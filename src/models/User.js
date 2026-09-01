@@ -5,7 +5,6 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
-      unique: true,
       lowercase: true,
     },
     password_hash: {
@@ -20,8 +19,16 @@ const userSchema = new mongoose.Schema(
       type: String,
     },
     groupIds: { type: [String], default: [] },
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tenant",
+      default: null,
+      index: true,
+    },
   },
   { timestamps: true }
 );
+
+userSchema.index({ email: 1, tenantId: 1 }, { unique: true });
 
 export default mongoose.model("User", userSchema);

@@ -27,13 +27,17 @@ const interactionSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tenant",
+      default: null,
+      index: true,
+    },
   },
   { timestamps: true }
 );
 
-// Um documento por (comunicado, usuário) — fonte única da interação
-interactionSchema.index({ postId: 1, userId: 1 }, { unique: true });
-// Suporta o conjunto "read" do usuário usado na ordenação por não-lido (I-10).
-interactionSchema.index({ userId: 1, read: 1, postId: 1 });
+interactionSchema.index({ tenantId: 1, postId: 1, userId: 1 }, { unique: true });
+interactionSchema.index({ tenantId: 1, userId: 1, read: 1, postId: 1 });
 
 export default mongoose.model("Interaction", interactionSchema);

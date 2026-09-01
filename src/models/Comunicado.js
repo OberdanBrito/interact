@@ -80,12 +80,17 @@ const comunicadoSchema = new mongoose.Schema(
       ],
       default: [],
     },
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tenant",
+      default: null,
+      index: true,
+    },
   },
   { timestamps: true }
 );
 
-// Índices para as consultas paginadas (feed por published; admin por createdBy).
-comunicadoSchema.index({ published: 1, dateISO: -1 });
-comunicadoSchema.index({ createdBy: 1, dateISO: -1 });
+comunicadoSchema.index({ tenantId: 1, published: 1, dateISO: -1 });
+comunicadoSchema.index({ tenantId: 1, createdBy: 1, dateISO: -1 });
 
 export default mongoose.model("Comunicado", comunicadoSchema);

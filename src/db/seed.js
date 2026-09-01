@@ -5,6 +5,7 @@ import connectDB from "./connection.js";
 import User from "../models/User.js";
 import Comunicado from "../models/Comunicado.js";
 import Group from "../models/Group.js";
+import Tenant from "../models/Tenant.js";
 
 const SEED_POSTS = [
   {
@@ -172,6 +173,20 @@ async function seed() {
     await Comunicado.deleteMany({});
     await Group.deleteMany({});
     console.log("✔ Coleções limpas");
+
+    // Tenant default (MT-19): idempotente — não cria duplicado entre execuções
+    const defaultTenantSlug = process.env.DEFAULT_TENANT_SLUG || "interna";
+    let defaultTenant = await Tenant.findOne({ slug: defaultTenantSlug });
+    if (!defaultTenant) {
+      defaultTenant = await Tenant.create({
+        slug: defaultTenantSlug,
+        name: "Empresa",
+        subdomain: defaultTenantSlug,
+        plan: "free",
+        active: true,
+      });
+    }
+    console.log(`✔ Tenant default "${defaultTenant.slug}" garantido`);
 
     // Insere admin
     const hash = bcrypt.hashSync("senha123", 10);

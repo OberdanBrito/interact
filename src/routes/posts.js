@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import crypto from "node:crypto";
 import { Router } from "express";
 import { unlink } from "node:fs/promises";
 import path from "node:path";
@@ -152,10 +153,29 @@ function escapeRegExp(str) {
 // Elegibilidade de um comunicado para um usuário (I-03):
 // admin vê só o que publicou; colaborador vê somente publicados, não expirados e
 // direcionados aos seus grupos (ou broadcast). Não-elegível → 404 (não revela o recurso).
+// Escopo por tenant (MT-22): casa o tenant resolvido OU o legado `null` (ponte de
+// transição até o backfill da MT-24). Posts de OUTRO tenant nunca são casados.
+// Normaliza o id para ObjectId: o filtro é usado tanto em find() quanto no
+// $match do aggregate (que não faz cast automático de tipo).
+function tenantScopeCondition(tenantId) {
+  if (!tenantId) return { tenantId: null };
+  const tid = mongoose.Types.ObjectId.isValid(tenantId)
+    ? new mongoose.Types.ObjectId(tenantId)
+    : tenantId;
+  return { $or: [{ tenantId: tid }, { tenantId: null }] };
+}
+
 function isPostEligible(doc, user) {
   const targetGroups = doc.targetGroups ?? [];
   const expired =
     doc.expiresAt != null && new Date(doc.expiresAt).getTime() < Date.now();
+  // Escopo por tenant (MT-22): comunicado legado (tenantId nulo) continua elegível
+  // na transição; comunicado de OUTRO tenant nunca é elegível.
+  const docTenant = doc.tenantId ? String(doc.tenantId) : null;
+  const userTenant = user.tenantId ? String(user.tenantId) : null;
+  if (docTenant !== null && docTenant !== userTenant) {
+    return false;
+  }
   if (user.role === "admin") {
     return String(doc.createdBy) === String(user.id);
   }
@@ -171,6 +191,12 @@ function attachmentFilePath(attachmentId) {
   return path.resolve(UPLOAD_DIR, attachmentId);
 }
 
+// Verifica se um comunicado pertence ao escopo do tenant do autor (MT-22):
+// comunicado legado (tenantId nulo) é aceito na transição; de outro tenant, não.
+function inTenantScope(doc, tenantId) {
+  return doc.tenantId == null || String(doc.tenantId) === String(tenantId);
+}
+
 // GET /api/posts — lista comunicados. Query params: ?category, ?search, ?groupId, ?archive,
 // ?limit, ?cursor (paginação por cursor; envelope `{ items, nextCursor, hasMore }`).
 // Sem `?limit`/`?cursor` mantém o array simples (retrocompatível).
@@ -180,6 +206,9 @@ router.get("/", async (req, res) => {
 
     const filter = {};
     const and = [];
+
+    // Escopo por tenant (MT-22) — ver helper tenantScopeCondition acima.
+    and.push(tenantScopeCondition(req.tenantId));
 
     if (category && category !== "todas") {
       filter.categoryId = category;
@@ -426,14 +455,8 @@ router.post("/", requireAdmin, async (req, res) => {
   }
 
   try {
-    // Gera próximo ID (p01, p02, ...)
-    const last = await Comunicado.findOne().sort({ _id: -1 }).select("_id").lean();
-    let nextNum = 1;
-    if (last) {
-      const match = last._id.match(/(\d+)$/);
-      if (match) nextNum = parseInt(match[1], 10) + 1;
-    }
-    const newId = `p${String(nextNum).padStart(2, "0")}`;
+    // Gera ID UUID (MT-22): evita colisão de sequência global entre tenants (D4).
+    const newId = crypto.randomUUID();
 
     const doc = await Comunicado.create({
       _id: newId,
@@ -449,6 +472,7 @@ router.post("/", requireAdmin, async (req, res) => {
       },
       targetGroups: groups,
       createdBy: req.user.id, // sempre do token, nunca do body
+      tenantId: req.tenantId || null, // escopo do tenant da requisição (MT-22)
       // Agendado: dataISO = publishAt para posicionar o post na ordem correta do feed
       dateISO: scheduledAt || new Date(),
       publishAt: isDraft ? null : scheduledAt,
@@ -495,7 +519,7 @@ router.put("/:id", requireAdmin, async (req, res) => {
   try {
     const doc = await Comunicado.findById(req.params.id);
 
-    if (!doc) {
+    if (!doc || !inTenantScope(doc, req.tenantId)) {
       return res.status(404).json({ error: "Comunicado não encontrado" });
     }
 
@@ -666,7 +690,7 @@ router.delete("/:id", requireAdmin, async (req, res) => {
 
     const doc = await Comunicado.findById(req.params.id);
 
-    if (!doc) {
+    if (!doc || !inTenantScope(doc, req.tenantId)) {
       return res.status(404).json({ error: "Comunicado não encontrado" });
     }
 
@@ -711,7 +735,7 @@ router.post("/:id/attachments", requireAdmin, (req, res) => {
 
     try {
       const doc = await Comunicado.findById(req.params.id);
-      if (!doc) {
+      if (!doc || !inTenantScope(doc, req.tenantId)) {
         try {
           await unlink(req.file.path);
         } catch {
@@ -779,7 +803,7 @@ router.delete("/:id/attachments/:attachmentId", requireAdmin, async (req, res) =
   try {
     const doc = await Comunicado.findById(req.params.id);
 
-    if (!doc) {
+    if (!doc || !inTenantScope(doc, req.tenantId)) {
       return res.status(404).json({ error: "Comunicado não encontrado" });
     }
 

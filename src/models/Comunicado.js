@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const comunicadoSchema = new mongoose.Schema(
   {
-    // ID público customizado no formato p01, p02, ...
+    // ID público como string: UUID para novos comunicados (MT-22); IDs `pNN` históricos seguem válidos.
     _id: {
       type: String,
     },

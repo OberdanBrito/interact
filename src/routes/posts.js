@@ -7,6 +7,7 @@ import Group from "../models/Group.js";
 import auth from "../middleware/auth.js";
 import requireAdmin from "../middleware/requireAdmin.js";
 import { schedulePublish, cancelPublish } from "../scheduler.js";
+import { emitSafe, EVENTS } from "../events.js";
 import upload, { UPLOAD_DIR, MAX_ATTACHMENT_MB } from "../upload.js";
 
 const router = Router();
@@ -15,7 +16,7 @@ const router = Router();
 router.use(auth);
 
 // Adapta formato para espelhar o schema do frontend
-async function toPost(doc) {
+export async function toPost(doc) {
   const targetGroups = doc.targetGroups ?? [];
   // Rascunho nunca é publicado (invariante D1)
   const published = doc.draft === true ? false : doc.published !== false;
@@ -297,6 +298,10 @@ router.post("/", requireAdmin, async (req, res) => {
       schedulePublish(doc);
     }
 
+    if (!isDraft && !scheduledAt) {
+      emitSafe(EVENTS.POST_NEW, await toPost(doc));
+    }
+
     res.status(201).json(await toPost(doc));
   } catch (err) {
     console.error("Erro ao criar comunicado:", err.message);
@@ -478,6 +483,10 @@ router.put("/:id", requireAdmin, async (req, res) => {
     // Agendado (não-publicado com data futura) → re-agenda a nova data
     if (!doc.published && doc.publishAt) {
       schedulePublish(doc);
+    }
+
+    if (doc.published === true) {
+      emitSafe(EVENTS.POST_UPDATED, await toPost(doc));
     }
 
     res.json(await toPost(doc));

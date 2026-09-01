@@ -11,6 +11,7 @@ import requireAdmin from "../middleware/requireAdmin.js";
 import { schedulePublish, cancelPublish } from "../scheduler.js";
 import { emitSafe, EVENTS } from "../events.js";
 import upload, { UPLOAD_DIR, MAX_ATTACHMENT_MB } from "../upload.js";
+import { tenantScopeCondition, inTenantScope } from "../utils/tenant.js";
 
 const router = Router();
 
@@ -153,18 +154,6 @@ function escapeRegExp(str) {
 // Elegibilidade de um comunicado para um usuário (I-03):
 // admin vê só o que publicou; colaborador vê somente publicados, não expirados e
 // direcionados aos seus grupos (ou broadcast). Não-elegível → 404 (não revela o recurso).
-// Escopo por tenant (MT-22): casa o tenant resolvido OU o legado `null` (ponte de
-// transição até o backfill da MT-24). Posts de OUTRO tenant nunca são casados.
-// Normaliza o id para ObjectId: o filtro é usado tanto em find() quanto no
-// $match do aggregate (que não faz cast automático de tipo).
-function tenantScopeCondition(tenantId) {
-  if (!tenantId) return { tenantId: null };
-  const tid = mongoose.Types.ObjectId.isValid(tenantId)
-    ? new mongoose.Types.ObjectId(tenantId)
-    : tenantId;
-  return { $or: [{ tenantId: tid }, { tenantId: null }] };
-}
-
 function isPostEligible(doc, user) {
   const targetGroups = doc.targetGroups ?? [];
   const expired =
@@ -191,12 +180,6 @@ function attachmentFilePath(attachmentId) {
   return path.resolve(UPLOAD_DIR, attachmentId);
 }
 
-// Verifica se um comunicado pertence ao escopo do tenant do autor (MT-22):
-// comunicado legado (tenantId nulo) é aceito na transição; de outro tenant, não.
-function inTenantScope(doc, tenantId) {
-  return doc.tenantId == null || String(doc.tenantId) === String(tenantId);
-}
-
 // GET /api/posts — lista comunicados. Query params: ?category, ?search, ?groupId, ?archive,
 // ?limit, ?cursor (paginação por cursor; envelope `{ items, nextCursor, hasMore }`).
 // Sem `?limit`/`?cursor` mantém o array simples (retrocompatível).
@@ -207,7 +190,7 @@ router.get("/", async (req, res) => {
     const filter = {};
     const and = [];
 
-    // Escopo por tenant (MT-22) — ver helper tenantScopeCondition acima.
+    // Escopo por tenant (MT-22) — helper em src/utils/tenant.js.
     and.push(tenantScopeCondition(req.tenantId));
 
     if (category && category !== "todas") {

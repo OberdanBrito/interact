@@ -6,6 +6,7 @@ import User from "../models/User.js";
 import Comunicado from "../models/Comunicado.js";
 import Group from "../models/Group.js";
 import Tenant from "../models/Tenant.js";
+import Category from "../models/Category.js";
 
 const SEED_POSTS = [
   {
@@ -172,6 +173,7 @@ async function seed() {
     await User.deleteMany({});
     await Comunicado.deleteMany({});
     await Group.deleteMany({});
+    await Category.deleteMany({});
     console.log("✔ Coleções limpas");
 
     // Tenant default (MT-19): idempotente — não cria duplicado entre execuções
@@ -195,13 +197,26 @@ async function seed() {
       password_hash: hash,
       name: "Administrador",
       role: "admin",
+      tenantId: defaultTenant._id,
     });
     console.log("✔ Usuário admin inserido");
 
+    // Categorias default do tenant (MT-23): slug único por tenant.
+    const CATEGORY_DEFAULTS = [
+      { slug: "geral", label: "Geral" },
+      { slug: "rh", label: "RH" },
+      { slug: "ti", label: "TI" },
+      { slug: "beneficios", label: "Benefícios" },
+    ];
+    await Category.insertMany(
+      CATEGORY_DEFAULTS.map((c) => ({ ...c, tenantId: defaultTenant._id }))
+    );
+    console.log("✔ Categorias default do tenant inseridas");
+
     const [gOperacoes, gLogistica, gTi] = await Group.create([
-      { name: "operacoes", active: true },
-      { name: "logistica", active: true },
-      { name: "ti", active: true },
+      { name: "operacoes", active: true, tenantId: defaultTenant._id },
+      { name: "logistica", active: true, tenantId: defaultTenant._id },
+      { name: "ti", active: true, tenantId: defaultTenant._id },
     ]);
     const idOperacoes = String(gOperacoes._id);
     const idLogistica = String(gLogistica._id);
@@ -215,6 +230,7 @@ async function seed() {
         name: "Colaborador Operações",
         role: "colaborador",
         groupIds: [idOperacoes],
+        tenantId: defaultTenant._id,
       },
       {
         email: "colaborador.multi@interactcorp.com.br",
@@ -222,6 +238,7 @@ async function seed() {
         name: "Colaborador Multi",
         role: "colaborador",
         groupIds: [idOperacoes, idTi],
+        tenantId: defaultTenant._id,
       },
       {
         email: "colaborador.semgrupo@interactcorp.com.br",
@@ -229,12 +246,17 @@ async function seed() {
         name: "Colaborador Sem Grupo",
         role: "colaborador",
         groupIds: [],
+        tenantId: defaultTenant._id,
       },
     ]);
     console.log("✔ 3 colaboradores inseridos");
 
     // Posts p01-p10 recebem createdBy do admin (admin vê só o que publicou)
-    const posts = SEED_POSTS.map((p) => ({ ...p, createdBy: admin._id }));
+    const posts = SEED_POSTS.map((p) => ({
+      ...p,
+      createdBy: admin._id,
+      tenantId: defaultTenant._id,
+    }));
 
     posts.push(
       {
@@ -251,6 +273,7 @@ async function seed() {
         ],
         targetGroups: [idOperacoes],
         createdBy: admin._id,
+        tenantId: defaultTenant._id,
         author: { name: "Departamento Pessoal", role: "DP" },
         dateISO: daysAgo(2),
       },
@@ -267,6 +290,7 @@ async function seed() {
         ],
         targetGroups: [idOperacoes, idLogistica],
         createdBy: admin._id,
+        tenantId: defaultTenant._id,
         author: { name: "Rafael Nunes", role: "Coordenador de TI" },
         dateISO: daysAgo(1),
       }

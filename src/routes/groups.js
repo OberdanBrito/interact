@@ -3,6 +3,7 @@ import Group from "../models/Group.js";
 import User from "../models/User.js";
 import auth from "../middleware/auth.js";
 import requireAdmin from "../middleware/requireAdmin.js";
+import { tenantScopeCondition, inTenantScope } from "../utils/tenant.js";
 
 const router = Router();
 
@@ -14,7 +15,9 @@ router.use(requireAdmin);
 // GET /api/groups — lista todos (ordenado por name asc)
 router.get("/", async (req, res) => {
   try {
-    const groups = await Group.find().sort({ name: 1 }).lean();
+    const groups = await Group.find(tenantScopeCondition(req.tenantId))
+      .sort({ name: 1 })
+      .lean();
     res.json(
       groups.map((g) => ({ id: g._id.toString(), name: g.name, active: g.active }))
     );
@@ -34,12 +37,18 @@ router.post("/", async (req, res) => {
 
   try {
     const trimmed = String(name).trim();
-    const exists = await Group.findOne({ name: trimmed });
+    const exists = await Group.findOne({
+      name: trimmed,
+      $and: [tenantScopeCondition(req.tenantId)],
+    });
     if (exists) {
       return res.status(400).json({ error: "Já existe um grupo com esse nome" });
     }
 
-    const group = await Group.create({ name: trimmed });
+    const group = await Group.create({
+      name: trimmed,
+      tenantId: req.tenantId || null,
+    });
     res.status(201).json({
       id: group._id.toString(),
       name: group.name,
@@ -63,7 +72,11 @@ router.put("/:id", async (req, res) => {
       if (!trimmed) {
         return res.status(400).json({ error: "Nome do grupo é obrigatório" });
       }
-      const dup = await Group.findOne({ name: trimmed, _id: { $ne: req.params.id } });
+      const dup = await Group.findOne({
+        name: trimmed,
+        _id: { $ne: req.params.id },
+        $and: [tenantScopeCondition(req.tenantId)],
+      });
       if (dup) {
         return res.status(400).json({ error: "Já existe um grupo com esse nome" });
       }
@@ -72,10 +85,14 @@ router.put("/:id", async (req, res) => {
 
     if (active !== undefined) update.active = Boolean(active);
 
-    const group = await Group.findByIdAndUpdate(req.params.id, update, { new: true });
-    if (!group) {
+    const doc = await Group.findById(req.params.id);
+    if (!doc || !inTenantScope(doc, req.tenantId)) {
       return res.status(404).json({ error: "Grupo não encontrado" });
     }
+    if (update.name !== undefined) doc.name = update.name;
+    if (update.active !== undefined) doc.active = update.active;
+    await doc.save();
+    const group = doc;
 
     res.json({ id: group._id.toString(), name: group.name, active: group.active });
   } catch (err) {
@@ -102,11 +119,17 @@ router.post("/recipient-count", async (req, res) => {
   try {
     let count;
     if (targetGroups.length === 0) {
-      // broadcast: só colaboradores (não admins)
-      count = await User.countDocuments({ role: "colaborador" });
+      // broadcast: só colaboradores (não admins), no tenant
+      count = await User.countDocuments({
+        role: "colaborador",
+        $and: [tenantScopeCondition(req.tenantId)],
+      });
     } else {
-      // união distinta
-      count = await User.countDocuments({ groupIds: { $in: targetGroups } });
+      // união distinta, no tenant
+      count = await User.countDocuments({
+        groupIds: { $in: targetGroups },
+        $and: [tenantScopeCondition(req.tenantId)],
+      });
     }
     res.json({ count });
   } catch (err) {

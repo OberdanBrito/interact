@@ -5,6 +5,7 @@ import User from "../models/User.js";
 import Group from "../models/Group.js";
 import auth from "../middleware/auth.js";
 import requireAdmin from "../middleware/requireAdmin.js";
+import { tenantScopeCondition } from "../utils/tenant.js";
 
 const router = Router();
 
@@ -16,6 +17,13 @@ router.use(auth);
 async function isEligible(user, postId) {
   const doc = await Comunicado.findById(postId).lean();
   if (!doc) return false;
+  // Pré-condição de tenant (MT-23): comunicado de outro tenant nunca é elegível;
+  // comunicado legado (tenantId nulo) segue elegível na transição.
+  const docTenant = doc.tenantId ? String(doc.tenantId) : null;
+  const userTenant = user.tenantId ? String(user.tenantId) : null;
+  if (docTenant !== null && docTenant !== userTenant) {
+    return false;
+  }
   const targetGroups = doc.targetGroups ?? [];
   if (user.role === "admin") return String(doc.createdBy) === String(user.id);
   return (
@@ -59,7 +67,7 @@ router.put("/:postId", async (req, res) => {
 
     const doc = await Interaction.findOneAndUpdate(
       { postId, userId: req.user.id },
-      { $set: patch, $setOnInsert: { postId, userId: req.user.id } },
+      { $set: patch, $setOnInsert: { postId, userId: req.user.id, tenantId: req.tenantId || null } },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
@@ -74,7 +82,10 @@ router.put("/:postId", async (req, res) => {
 //   Usado para restaurar o estado (likes/leituras) num novo dispositivo.
 router.get("/me", async (req, res) => {
   try {
-    const docs = await Interaction.find({ userId: req.user.id }).lean();
+    const docs = await Interaction.find({
+      userId: req.user.id,
+      $and: [tenantScopeCondition(req.tenantId)],
+    }).lean();
     const result = {};
     for (const d of docs) {
       result[d.postId] = { liked: d.liked, read: d.read };
@@ -93,14 +104,19 @@ router.get("/members", requireAdmin, async (req, res) => {
     return res.status(400).json({ error: "postId é obrigatório" });
   }
   try {
-    const docs = await Interaction.find({ postId }).lean();
+    const docs = await Interaction.find({
+      postId,
+      $and: [tenantScopeCondition(req.tenantId)],
+    }).lean();
     const userMap = new Map();
     const userIds = docs.map((d) => d.userId);
     if (userIds.length > 0) {
       const users = await User.find({ _id: { $in: userIds } })
         .select("name email groupIds")
         .lean();
-      const groups = await Group.find().select("name").lean();
+      const groups = await Group.find(tenantScopeCondition(req.tenantId))
+        .select("name")
+        .lean();
       const nameById = new Map(groups.map((g) => [String(g._id), g.name]));
       for (const u of users) {
         userMap.set(String(u._id), {
@@ -145,7 +161,9 @@ router.get("/summary", requireAdmin, async (req, res) => {
   }
 
   try {
-    let interactions = await Interaction.find({}).lean();
+    let interactions = await Interaction.find(
+      tenantScopeCondition(req.tenantId)
+    ).lean();
 
     if (desdeDate || ateDate) {
       const inRange = (d) => {
@@ -194,14 +212,19 @@ router.get("/", requireAdmin, async (req, res) => {
     return res.status(400).json({ error: "postId é obrigatório" });
   }
   try {
-    const interactions = await Interaction.find({ postId }).lean();
+    const interactions = await Interaction.find({
+      postId,
+      $and: [tenantScopeCondition(req.tenantId)],
+    }).lean();
     const userIds = interactions.map((d) => d.userId);
     const users = userIds.length
       ? await User.find({ _id: { $in: userIds } })
           .select("groupIds")
           .lean()
       : [];
-    const groups = await Group.find().select("name").lean();
+    const groups = await Group.find(tenantScopeCondition(req.tenantId))
+      .select("name")
+      .lean();
     const nameById = new Map(groups.map((g) => [String(g._id), g.name]));
 
     let totalReads = 0;
@@ -252,7 +275,10 @@ router.get("/:postId", async (req, res) => {
   const { postId } = req.params;
   try {
     if (req.user.role === "admin") {
-      const interactions = await Interaction.find({ postId }).lean();
+      const interactions = await Interaction.find({
+        postId,
+        $and: [tenantScopeCondition(req.tenantId)],
+      }).lean();
       let totalReads = 0;
       let totalLikes = 0;
       for (const i of interactions) {
@@ -264,6 +290,7 @@ router.get("/:postId", async (req, res) => {
     const doc = await Interaction.findOne({
       postId,
       userId: req.user.id,
+      $and: [tenantScopeCondition(req.tenantId)],
     }).lean();
     res.json({
       postId,

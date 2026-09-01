@@ -1360,3 +1360,26 @@ tbody tr:hover {
     transition-duration: .01ms !important;
   }
 }
+
+/* ===== Paginação da listagem (I-10) ===== */
+
+#posts-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border, #dbe3ef);
+}
+#posts-pagination[hidden] { display: none; }
+#posts-pagination .pagination-info {
+  font-size: var(--fs-label, 0.8rem);
+  color: var(--text-secondary, #5b6b83);
+}
+#posts-pagination .btn {
+  min-width: 88px;
+}
+#posts-pagination .btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

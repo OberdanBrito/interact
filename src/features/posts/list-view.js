@@ -1,4 +1,4 @@
-import { state } from "../../core/state.js";
+import { state, PAGE_SIZE } from "../../core/state.js";
 import { CATEGORIES, listPosts, getPost, deletePost, updatePost } from "../../data/posts.js";
 import { postRowHTML, emptyStateHTML, confirmModalHTML } from "../../ui/templates.js";
 import { $, normalizeText } from "../../core/utils.js";
@@ -14,6 +14,31 @@ function filterPosts(posts) {
   });
 }
 
+function renderPagination(pagination, page, totalPages, root) {
+  if (!pagination) return;
+  if (totalPages <= 1) {
+    pagination.hidden = true;
+    return;
+  }
+  pagination.hidden = false;
+  pagination.innerHTML = `
+    <span class="pagination-info">Página ${page} de ${totalPages}</span>
+    <button type="button" class="btn pagination-prev" ${page <= 1 ? "disabled" : ""}>Anterior</button>
+    <button type="button" class="btn pagination-next" ${page >= totalPages ? "disabled" : ""}>Próxima</button>`;
+  pagination.querySelector(".pagination-prev")?.addEventListener("click", () => {
+    if (state.page > 1) {
+      state.page -= 1;
+      renderRows(root);
+    }
+  });
+  pagination.querySelector(".pagination-next")?.addEventListener("click", () => {
+    if (state.page < totalPages) {
+      state.page += 1;
+      renderRows(root);
+    }
+  });
+}
+
 async function renderRows(root) {
   const posts = await listPosts();
   const filtered = filterPosts(posts);
@@ -21,14 +46,15 @@ async function renderRows(root) {
   const empty = root.querySelector("#list-empty");
   const table = root.querySelector("#posts-table");
   const count = root.querySelector("#posts-count");
+  const pagination = root.querySelector("#posts-pagination");
 
-  const draftCount = posts.filter((p) => p.status === "rascunho").length;
+  const draftCount = filtered.filter((p) => p.status === "rascunho").length;
   count.textContent =
     draftCount > 0
-      ? `${posts.length} comunicados (${draftCount} rascunho${draftCount > 1 ? "s" : ""})`
-      : posts.length === 1
+      ? `${filtered.length} comunicados (${draftCount} rascunho${draftCount > 1 ? "s" : ""})`
+      : filtered.length === 1
         ? "1 comunicado"
-        : `${posts.length} comunicados`;
+        : `${filtered.length} comunicados`;
 
   if (posts.length === 0) {
     table.hidden = true;
@@ -38,6 +64,7 @@ async function renderRows(root) {
       message: "Os comunicados publicados aqui aparecem no app dos colaboradores.",
       showCta: true,
     });
+    if (pagination) pagination.hidden = true;
     return;
   }
 
@@ -48,12 +75,19 @@ async function renderRows(root) {
       title: "Nenhum resultado encontrado",
       message: "Ajuste a busca ou o filtro de categoria para ver outros comunicados.",
     });
+    if (pagination) pagination.hidden = true;
     return;
   }
 
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  if (state.page > totalPages) state.page = totalPages;
+  if (state.page < 1) state.page = 1;
+  const pageItems = filtered.slice((state.page - 1) * PAGE_SIZE, state.page * PAGE_SIZE);
+
   table.hidden = false;
   empty.hidden = true;
-  tbody.innerHTML = filtered.map(postRowHTML).join("");
+  tbody.innerHTML = pageItems.map(postRowHTML).join("");
+  renderPagination(pagination, state.page, totalPages, root);
 }
 
 function closeModal() {
@@ -173,6 +207,7 @@ export function render(root) {
         <tbody id="posts-tbody"></tbody>
       </table>
       <div id="list-empty" hidden></div>
+      <nav id="posts-pagination" aria-label="Paginação de comunicados"></nav>
     </div>`;
 
   const search = root.querySelector("#search");
@@ -182,10 +217,12 @@ export function render(root) {
 
   search.addEventListener("input", () => {
     state.search = search.value;
+    state.page = 1;
     renderRows(root);
   });
   filter.addEventListener("change", () => {
     state.categoryFilter = filter.value;
+    state.page = 1;
     renderRows(root);
   });
 

@@ -84,4 +84,8 @@ const comunicadoSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Índices para as consultas paginadas (feed por published; admin por createdBy).
+comunicadoSchema.index({ published: 1, dateISO: -1 });
+comunicadoSchema.index({ createdBy: 1, dateISO: -1 });
+
 export default mongoose.model("Comunicado", comunicadoSchema);

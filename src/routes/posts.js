@@ -4,6 +4,7 @@ import { unlink } from "node:fs/promises";
 import path from "node:path";
 import Comunicado from "../models/Comunicado.js";
 import Group from "../models/Group.js";
+import Interaction from "../models/Interaction.js";
 import auth from "../middleware/auth.js";
 import requireAdmin from "../middleware/requireAdmin.js";
 import { schedulePublish, cancelPublish } from "../scheduler.js";
@@ -62,6 +63,87 @@ export async function toPost(doc) {
 // Janela de idade que separa comunicados ativos de arquivados (I-12)
 const ARCHIVE_AFTER_DAYS = Number.parseInt(process.env.ARCHIVE_AFTER_DAYS, 10) || 30;
 
+// Paginação por cursor (I-10). Chaves de ordenação por janela de view.
+// "smart" = feed ativo do colaborador (fixado→urgente→não-lido→recente);
+// "admin" = lista do admin (fixado→recência); "archive" = arquivo (recência).
+const MAX_LIMIT = 100;
+const DEFAULT_LIMIT = 20;
+
+const CURSOR_KEYS = {
+  smart: [
+    { field: "pinned", dir: -1 },
+    { field: "urgent", dir: -1 },
+    { field: "_unread", dir: -1, cursorField: "unread" },
+    { field: "dateISO", dir: -1 },
+    { field: "_id", dir: 1, cursorField: "id" },
+  ],
+  admin: [
+    { field: "pinned", dir: -1 },
+    { field: "dateISO", dir: -1 },
+    { field: "_id", dir: 1, cursorField: "id" },
+  ],
+  archive: [
+    { field: "dateISO", dir: -1 },
+    { field: "_id", dir: 1, cursorField: "id" },
+  ],
+};
+
+// Cursor opaco (base64 de JSON) com marcador de janela para detectar recorte divergente.
+function encodeCursor(window, tuple) {
+  return Buffer.from(JSON.stringify({ v: window, ...tuple })).toString("base64url");
+}
+
+function decodeCursor(raw) {
+  try {
+    const parsed = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+// Constrói o $or lexicográfico "depois do cursor" na ordem de ordenação da janela.
+// dir -1 (desc): itens seguintes têm valor < do cursor; dir 1 (asc): valor >.
+function buildCursorMatch(keys, cursor) {
+  const conds = [];
+  for (let i = 0; i < keys.length; i++) {
+    const obj = {};
+    for (let j = 0; j < i; j++) {
+      const prev = keys[j];
+      const prevVal = cursor[prev.cursorField || prev.field];
+      obj[prev.field] = prevVal;
+    }
+    const k = keys[i];
+    const val = cursor[k.cursorField || k.field];
+    obj[k.field] = {
+      [k.dir === -1 ? "$lt" : "$gt"]: k.field === "dateISO" ? new Date(val) : val,
+    };
+    conds.push(obj);
+  }
+  return { $or: conds };
+}
+
+// Extrai a tupla de cursor do último documento da página, na janela corrente.
+function lastCursorTuple(doc, window) {
+  switch (window) {
+    case "smart":
+      return {
+        pinned: doc.pinned,
+        urgent: doc.urgent,
+        unread: doc._unread,
+        dateISO: doc.dateISO,
+        id: doc._id,
+      };
+    case "admin":
+      return { pinned: doc.pinned, dateISO: doc.dateISO, id: doc._id };
+    case "archive":
+      return { dateISO: doc.dateISO, id: doc._id };
+    default:
+      return null;
+  }
+}
+
 // Escapa metacaracteres para busca literal (equivalente ao ILIKE %...%)
 function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -89,10 +171,12 @@ function attachmentFilePath(attachmentId) {
   return path.resolve(UPLOAD_DIR, attachmentId);
 }
 
-// GET /api/posts — lista todos. Query params: ?category, ?search, ?groupId, ?archive
+// GET /api/posts — lista comunicados. Query params: ?category, ?search, ?groupId, ?archive,
+// ?limit, ?cursor (paginação por cursor; envelope `{ items, nextCursor, hasMore }`).
+// Sem `?limit`/`?cursor` mantém o array simples (retrocompatível).
 router.get("/", async (req, res) => {
   try {
-    const { category, search, groupId, archive } = req.query;
+    const { category, search, groupId, archive, limit: limitRaw, cursor: cursorRaw } = req.query;
 
     const filter = {};
     const and = [];
@@ -155,10 +239,89 @@ router.get("/", async (req, res) => {
       filter.$and = and;
     }
 
-    // Fixados primeiro, depois por recência (I-04). Mongo: false < true, então -1 põe true no topo.
-    const docs = await Comunicado.find(filter).sort({ pinned: -1, dateISO: -1 }).lean();
+    // Parâmetros de paginação por cursor (I-10)
+    let limit = null;
+    if (limitRaw !== undefined) {
+      if (!/^\d+$/.test(String(limitRaw))) {
+        return res.status(400).json({ error: "limit inválido" });
+      }
+      limit = Number(limitRaw);
+      if (limit <= 0 || limit > MAX_LIMIT) {
+        return res.status(400).json({ error: "limit inválido" });
+      }
+    }
+    const paginated = limitRaw !== undefined || (cursorRaw !== undefined && cursorRaw !== "");
 
-    res.json(await Promise.all(docs.map(toPost)));
+    let window = "archive";
+    if (req.user.role === "admin") window = "admin";
+    else if (archive === "archived") window = "archive";
+    else window = "smart"; // feed ativo do colaborador
+
+    let decodedCursor = null;
+    if (cursorRaw !== undefined && cursorRaw !== "") {
+      decodedCursor = decodeCursor(cursorRaw);
+      if (!decodedCursor || decodedCursor.v !== window) {
+        return res.status(400).json({ error: "Cursor inválido" });
+      }
+      // Cursor exige paginação (envelope)
+      if (!paginated) {
+        return res.status(400).json({ error: "Cursor inválido" });
+      }
+    }
+    const pageSize = limit ?? DEFAULT_LIMIT;
+
+    let docs;
+    if (window === "smart") {
+      // Ordenação inteligente no backend: fixado → urgente → não lido → recente.
+      // "Não lido" = comunicado sem interação `read: true` do usuário autenticado.
+      const readIds = await Interaction.find({ userId: req.user.id, read: true })
+        .distinct("postId");
+      const pipeline = [
+        { $match: filter },
+        {
+          $addFields: {
+            pinned: { $ifNull: ["$pinned", false] },
+            urgent: { $ifNull: ["$urgent", false] },
+            _unread: { $not: { $in: ["$_id", readIds] } },
+          },
+        },
+        { $sort: { pinned: -1, urgent: -1, _unread: -1, dateISO: -1, _id: 1 } },
+      ];
+      if (decodedCursor) {
+        pipeline.push({ $match: buildCursorMatch(CURSOR_KEYS.smart, decodedCursor) });
+      }
+      if (paginated) pipeline.push({ $limit: pageSize + 1 });
+      docs = await Comunicado.aggregate(pipeline);
+    } else {
+      const sortSpec =
+        window === "admin" ? { pinned: -1, dateISO: -1, _id: 1 } : { dateISO: -1, _id: 1 };
+      const query = { ...filter };
+      if (decodedCursor) {
+        query.$and = [...(filter.$and ?? []), buildCursorMatch(CURSOR_KEYS[window], decodedCursor)];
+      }
+      let findQuery = Comunicado.find(query).sort(sortSpec);
+      if (paginated) findQuery = findQuery.limit(pageSize + 1);
+      docs = await findQuery.lean();
+    }
+
+    let items = docs;
+    let nextCursor = null;
+    let hasMore = false;
+    if (paginated) {
+      const hasMoreFlag = docs.length > pageSize;
+      items = hasMoreFlag ? docs.slice(0, pageSize) : docs;
+      if (hasMoreFlag && items.length > 0) {
+        nextCursor = encodeCursor(window, lastCursorTuple(items[items.length - 1], window));
+      }
+      hasMore = hasMoreFlag;
+    }
+
+    const payload = await Promise.all(items.map(toPost));
+    if (paginated) {
+      res.json({ items: payload, nextCursor, hasMore });
+    } else {
+      res.json(payload);
+    }
   } catch (err) {
     console.error("Erro ao listar comunicados:", err.message);
     res.status(500).json({ error: "Erro interno no servidor" });

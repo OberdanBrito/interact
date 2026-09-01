@@ -155,14 +155,15 @@ fila funcional deste documento.
 - **Componentes:** `backend` (`GET /api/events` SSE + `EventEmitter`), `frontend_pwa` (data/posts.js, feed.js)
 - **Prioridade:** Média
 - **Esforço:** G (revisado de M — issue passou a incluir a infraestrutura compartilhada, não só o consumo no PWA)
-- **Status:** Aberto
-- **Relação:** I-14 depende desta (só assina `interaction:changed`, não reimplementa conexão). Recomenda-se concluir antes ou junto da I-10 (posts novos via SSE não podem desalinhar o cursor de paginação).
+- **Status:** Concluído
+- **Registro:** backend `0b27635` (implementação) + `1166946` (arquiva change e sincroniza spec), branch `backend`; frontend_pwa `06f8fc1` (implementação) + `af49d61` (arquiva change e sincroniza spec), branch `frontend_pwa`. Verificado por `npm run qa:i07` + `npm run test:integration` (backend) e validação visual no PWA (Playwright :5173 — post aparece ≤5s sem reload; reconexão após offline). OpenSpec arquivado em `openspec/changes/archive/2026-09-01-canal-tempo-real` nas duas componentes.
+- **Relação:** I-14 depende desta (só assina `interaction:changed`, não reimplementa conexão) — **desbloqueada** com esta entrega. Recomenda-se concluir antes ou junto da I-10 (posts novos via SSE não podem desalinhar o cursor de paginação).
 - **Critérios de aceite:**
-  - [ ] `GET /api/events` (SSE) autenticado, emite `post:new`, `post:updated`, `post:expired`
-  - [ ] Novo comunicado aparece no feed elegível em ≤ 5s
-  - [ ] Reconexão automática + fallback para polling (60s) se SSE falhar
-  - [ ] Sem regressão no cache offline e no badge
-  - [ ] Módulo de conexão reutilizável pela I-14
+  - [x] `GET /api/events` (SSE) autenticado, emite `post:new`, `post:updated`, `post:expired`
+  - [x] Novo comunicado aparece no feed elegível em ≤ 5s
+  - [x] Reconexão automática + fallback para polling (60s) se SSE falhar
+  - [x] Sem regressão no cache offline e no badge
+  - [x] Módulo de conexão reutilizável pela I-14
 
 ### I-08 — E-mail como fallback de notificação
 - **Descrição:** enviar e-mail ao colaborador quando um comunicado for direcionado a ele (fallback para quem não usa o app).

@@ -7,6 +7,10 @@ dist/
 # Segredos / estado local
 .env
 
+# Credenciais de serviço (Google Cloud / Firebase) — nunca commitar
+*firebase-admin*.json
+*firebase-adminsdk*.json
+
 # Estado local de ferramentas de agente
 .omo/
 .playwright-mcp/
@@ -19,3 +23,4 @@ qa-*.png
 # Sistema operacional
 .DS_Store
 Thumbs.db
+node_modules

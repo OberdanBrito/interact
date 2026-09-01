@@ -4,8 +4,10 @@ import { emptyStateHTML } from "../../ui/templates.js";
 import { showToast } from "../../ui/toast.js";
 
 const ALL_GROUPS = "__todas__";
+const POLL_INTERVAL_MS = 30000;
 
 let groupFilter = ALL_GROUPS;
+let pollTimer = null;
 
 function readBadge(read, liked) {
   const parts = [];
@@ -61,6 +63,8 @@ function renderTable(root, members, empty) {
 }
 
 export async function render(root, { id } = {}) {
+  stopPolling();
+
   const post = id ? await getPost(id) : null;
   if (!post) {
     showToast("Comunicado não encontrado");
@@ -68,7 +72,7 @@ export async function render(root, { id } = {}) {
     return;
   }
 
-  const members = (await getInteractionMembers(id)).filter((m) => m.user);
+  let members = (await getInteractionMembers(id)).filter((m) => m.user);
   const totalReads = members.filter((m) => m.read).length;
   const totalLikes = members.filter((m) => m.liked).length;
   const groupOptions = [
@@ -131,6 +135,25 @@ export async function render(root, { id } = {}) {
   });
 
   renderTable(root, members, root.querySelector("#list-empty"));
+
+  async function refreshMembers() {
+    const fresh = (await getInteractionMembers(id)).filter((m) => m.user);
+    if (fresh.length === 0 && members.length > 0) return; // falha transitória: camada de dados retorna []
+    members = fresh;
+    const reads = members.filter((m) => m.read).length;
+    const likes = members.filter((m) => m.liked).length;
+    const totals = root.querySelectorAll(".metrics-summary .metric-total strong");
+    if (totals[0]) totals[0].textContent = reads;
+    if (totals[1]) totals[1].textContent = likes;
+    renderTable(root, members, root.querySelector("#list-empty"));
+  }
+
+  pollTimer = setInterval(refreshMembers, POLL_INTERVAL_MS);
+}
+
+export function stopPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = null;
 }
 
 export function resetGroupFilter() {

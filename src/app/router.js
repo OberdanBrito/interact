@@ -78,6 +78,8 @@ const AUTH_ROUTES = {
 };
 
 function renderRoute() {
+  analyticsDetailView.stopPolling();
+
   const route = parseRoute();
   const authed = Boolean(state.user);
 

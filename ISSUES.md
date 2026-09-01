@@ -99,7 +99,7 @@ backend único roteado por header.
 | MT-19 | Backend: modelo Tenant + resolução/injeção do tenant (D1/D2) | [#19](https://github.com/OberdanBrito/interact/issues/19) ✅ Concluída |
 | MT-20 | Backend: `tenantId` nos models + índices compostos | [#20](https://github.com/OberdanBrito/interact/issues/20) ✅ Concluída |
 | MT-21 | Backend: auth e login por tenant | [#21](https://github.com/OberdanBrito/interact/issues/21) ✅ Concluída |
-| MT-22 | Backend: escopo por tenant em comunicados (posts) + IDs/UUID | [#22](https://github.com/OberdanBrito/interact/issues/22) |
+| MT-22 | Backend: escopo por tenant em comunicados (posts) + IDs/UUID | [#22](https://github.com/OberdanBrito/interact/issues/22) ✅ Concluída |
 | MT-23 | Backend: escopo por tenant em grupos, interações e categorias | [#23](https://github.com/OberdanBrito/interact/issues/23) |
 | MT-24 | Backend: scheduler, tempo real (SSE) e migração/seed | [#24](https://github.com/OberdanBrito/interact/issues/24) |
 | MT-25 | Admin: sessão, headers e storage por tenant | [#25](https://github.com/OberdanBrito/interact/issues/25) |

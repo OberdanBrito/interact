@@ -248,14 +248,15 @@ fila funcional deste documento.
 - **Componentes:** `backend` (rota interactions — adicionar filtros ao `summary`), `frontend_admin` (features/analytics)
 - **Prioridade:** Média
 - **Esforço:** M (2-3 dias)
-- **Status:** Aberto
+- **Status:** Concluído
 - **Contexto atual:** endpoint `GET /api/interactions/summary` JÁ EXISTE (`{ [postId]: { reads, likes } }`); falta adicionar filtros de período/grupo e a tela de dashboard. **Não re-implementar o endpoint.**
 - **Após I-12:** o dashboard deve incluir comunicados arquivados no histórico (filtro por período cobrindo `dateISO` antigos) — decisão se arquivados entram nos totais por default.
+- **Concluído (01/09/2026):** filtros opcionais `desde`/`ate`/`groupId` no `GET /api/interactions/summary` (backend) + dashboard global `#/dashboard` no admin (cards, ranking mais/menos lidos, filtros). Commits: backend `d2e3811` (implementação), `e0d30e6` (arquivo/spec); admin `7a8126f` (implementação), `27ef6ad` (arquivo/spec). Specs principais: `interactions` (novo requisito de filtros) e `dashboard-metricas-global` (nova capacidade).
 - **Critérios de aceite:**
-  - [ ] `GET /api/interactions/summary` aceita filtros de período (`desde`/`ate`) e `groupId`; retorna totais por comunicado/grupo
-  - [ ] Tela de dashboard com cards e ranking de comunicados mais/menos lidos
-  - [ ] Filtro por período e por grupo
-  - [ ] Comunicado sem interações renderiza 0 (não "null")
+  - [x] `GET /api/interactions/summary` aceita filtros de período (`desde`/`ate`) e `groupId`; retorna totais por comunicado/grupo
+  - [x] Tela de dashboard com cards e ranking de comunicados mais/menos lidos
+  - [x] Filtro por período e por grupo
+  - [x] Comunicado sem interações renderiza 0 (não "null")
 
 ### I-14 — Recibo de leitura individual em tempo real
 - **Descrição:** hoje o admin vê quem leu/curtiu, mas sem atualização em tempo real. Assina o canal SSE estabelecido na I-07 — não cria um segundo mecanismo.

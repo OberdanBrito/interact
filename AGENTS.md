@@ -53,27 +53,28 @@ API REST + MongoDB. Express 5, Mongoose, JWT, bcrypt, CORS, node-schedule.
 - Porta padrão 3001; roda em 3002 via env `PORT`.
 - Rotas: `/api/auth/login`, `/api/posts` (CRUD completo), `/api/categories`, `/api/groups`, `/api/interactions`; `/health` (sem auth).
 - Models: `Comunicado`, `User`, `Group`, `Interaction`. Middleware de auth JWT. `_id` do Comunicado é string customizada sequencial (`p01`, `p02`, … — gerada na rota).
-- Scripts: `dev` (node --watch src/server.js), `start`, `seed`, `db:reset` (docker compose down -v && up -d && seed), `test:integration` (qa-i11 + qa-i12 + qa-i04, Mongo real), `qa:i12`, `qa:i04`.
+- Scripts: `dev` (node --watch src/server.js), `start`, `seed`, `db:reset` (docker compose down -v && up -d && sleep 5 && seed), `test:integration` (qa-i11 + qa-i12 + qa-i04 + qa-i05 + qa-i03 — Mongo real), `qa:i12`, `qa:i04`, `qa:i05`, `qa:i03`.
 - MongoDB sobe via docker-compose.
 - **Cuidado — sobras commitadas na branch `backend`:** a branch carrega cópia antiga do frontend_pwa — `index.html`, `vite.config.js`, `styles.css` e `src/{feed,sheet,toast,main,pwa,state,templates,autoread,data,utils,session,interactions}.js` (+ `scripts/qa-pwa.mjs`, `scripts/gen_icons.py`) são código morto. Ex.: `src/interactions.js` é o feature do PWA, NÃO a rota. O backend real é `src/server.js` → `src/app.js` → `src/routes/`.
 
 ### frontend_admin/
 Painel administrativo. Vite vanilla JS. Porta dev 5174. Sem testes.
-- Views: login, lista de posts, formulário de post (criar/editar), modal, toast, grupos, métricas.
-- Features: auth (login-view, session), posts (form-view, list-view), groups (list-view, form-view), analytics (list-view, detail-view), data/posts.js, data/groups.js.
+- Layout: `src/app/` (main.js, router.js), `src/core/` (state, utils), `src/ui/` (toast, templates), `src/features/<feature>/`, `src/data/` (posts.js, groups.js).
+- Features: auth (login-view, session), posts (form-view, list-view), groups (form-view, list-view), analytics (list-view, detail-view).
 
 ### frontend_pwa/
 PWA do colaborador. Vite + vite-plugin-pwa. Porta dev 5173.
-- Views: login, feed, bottom sheet (detalhe do post), toast, banner de instalação.
-- Features: auth/session, feed (seletor de ambiente, chips de categoria, ordenação inteligente, cards, autoread), interactions (curtir, confirmar leitura, marcar como não lido), notifications/badge (Badging API), install/pwa.
-- Dados: data/posts.js (API REST), data/cache.js (cache offline Dexie), data/sync.js (fila offline de interações).
+- Layout: `src/app/` (main.js), `src/core/` (state, utils), `src/ui/` (sheet, toast), `src/features/<feature>/`, `src/data/` (posts.js, cache.js, sync.js).
+- Features: auth/session; feed (feed.js, autoread.js, templates.js — seletor de ambiente, chips de categoria, ordenação inteligente, cards); interactions (interactions.js — curtir, confirmar leitura, marcar como não lido); notifications/badge (Badging API); install/pwa.
 - Scripts: `dev`, `build`, `preview`, `qa` (scripts/qa-pwa.mjs), E2E (scripts/e2e-admin-to-pwa.mjs, e2e-admin-ui-to-pwa.mjs), QA focados (scripts/qa-offline-cache.mjs, qa-offline-collab.mjs, qa-badge-sort.mjs).
 
 ## FLUXO DE TRABALHO
-> **Obrigatório para todas as issues**: siga estritamente a skill da esteira de implementação
-> (`.opencode/skills/esteira-implementacao/SKILL.md`, presente em cada worktree). Requisito gravado também em todas
-> as issues em aberto. A conformidade é verificada periodicamente pelo desenvolvedor dono do
-> projeto — nenhum portão pode ser pulado, e desvios devem ser reportados.
+> **Obrigatório para todas as issues**: siga estritamente a esteira OpenSpec — comandos
+> `opsx-propose`/`opsx-apply`/`opsx-archive` (`.opencode/commands/`) e skills
+> `openspec-propose`/`openspec-apply-change`/`openspec-archive-change` (`.opencode/skills/`)
+> presentes em cada worktree. Requisito gravado também em todas as issues em aberto.
+> A conformidade é verificada periodicamente pelo desenvolvedor dono do projeto —
+> nenhum portão pode ser pulado, e desvios devem ser reportados.
 
 Por issue funcional (I-01…I-15, projetos v2 #8):
 1. **Contexto** — consultar o knowledge graph (megamemory) e usar o status do GitHub (Projects v2) como fonte de verdade.
@@ -116,12 +117,13 @@ Autenticação JWT em ambos os frontends. Nenhum conteúdo flui do colaborador a
 | Badge de não-lidos | `frontend_pwa` features/notifications/badge.js |
 | Métricas de leitura/curtida (admin) | `backend` rota `/api/interactions`; `frontend_admin` features/analytics |
 | Categorias | `backend` rota `/api/categories` (estáticas) |
-| Arquitetura detalhada | `ARCHITECTURE.md` e `DESIGN.md` em cada projeto |
+| Arquitetura detalhada | `ARCHITECTURE.md` (e `DESIGN.md` no `backend`/`frontend_pwa`) |
 
 ## CONVENÇÕES
 - Interações (curtir, leitura) persistem em localStorage do cliente **e** sincronizam ao backend (fonte de verdade do agregado); fila offline em `interact.syncQueue`.
 - **Arquivo de comunicados (I-12)**: feed separado por aba "Ativos | Arquivo" (`state.archive`, `renderArchiveTabs`). "Antigo" = publicado há ≥ `ARCHIVE_AFTER_DAYS` dias (default 30; env no backend, constante espelhada no PWA `src/data/posts.js`); corte derivado da idade via `dateISO` (sem flag no schema). Backend `GET /api/posts?archive=active|archived` (colaborador; admin ignora; ausência do parâmetro preserva o comportamento atual; combina com `category`/`search`/`groupId`). "Ativos" usa a ordenação inteligente; "Arquivo" ordena por data desc (`sortByDate`). Interações (curtir/ler/marcar não lido) funcionam no arquivo e não reordenam para o feed ativo. Offline: cache Dexie guarda o último recorte buscado.
 - **Reverter leitura (I-11)**: ação "Marcar como não lido" (`.js-unread`) aparece no card e no sheet quando o post está lido (`actionButtonsHTML`); `markUnreadPersist` remove o postId da lista `read` local, enfileira `{ read: false }` e `renderFeed()` reordena o feed (volta ao grupo de não-lidos) e `refreshBadge()` recontam o badge. Backend limpa `readAt` (null) ao reverter (`read: false`); re-ler repreenche `readAt`. Métricas "quem leu" (`/api/interactions/members`) refletem a reversão.
+- **Recibo de leitura em tempo real (I-14)**: o detail-view de analytics (`frontend_admin/src/features/analytics/detail-view.js`) tem hoje um **polling client-side** (`POLL_INTERVAL_MS = 30000`) como fallback/interino — `refreshMembers()` re-busca `getInteractionMembers(id)`, atualiza os totais (`.metrics-summary .metric-total strong`) e re-renderiza a tabela preservando o `groupFilter`; guarda mantém a lista anterior em falha transitória; `stopPolling()` é chamado no `renderRoute()` do `router.js` e no início de `render()`. **Nota de escopo (dono, 31/08):** a I-14 foi **revista** para **SSE ≤5s via canal da I-07** (`interaction:changed`, `GET /api/events`) — **ainda não implementada** (depende de I-07). O polling é a implementação atual/fallback e será substituído quando a I-07 entregar o SSE. Spec atual `openspec/specs/recibo-leitura-tempo-real/spec.md` descreve o polling; será atualizado com o SSE da I-07 quando implementado.
 - **Busca no PWA (I-09)**: campo de busca no feed do colaborador (`<input type="search" id="search-input">`, `state.search`, dono feed.js). `getPosts(groupId, { archive, search })` envia `?search=` (encodeURIComponent; regex em `title`/`author.name` no backend); combo com `?groupId=`, `?category=`, `?archive=` — busca respeita visibilidade/grupo, seletor de ambiente, categoria e aba Ativos/Arquivo. Debounce ~250ms (`SEARCH_DEBOUNCE_MS`, `bindSearchInput`) para não disparar request por tecla. Offline: `filterCachedByGroup(groupId, archive, search)` filtra localmente (case-insensitive em title/author.name) sobre o cache Dexie. Estado vazio próprio "Nenhum comunicado encontrado para a busca" (`renderFeed`). Backend intocado (rota já suportava `?search=`). Spec principal `openspec/specs/busca-feed/spec.md`.
 - **Fixar comunicado (I-04)**: `pinned: boolean` (default false) no model, exposto no payload; `GET /api/posts` ordena pinned primeiro (`.sort({pinned:-1, dateISO:-1})`, múltiplos pinned por recência). Pin SÓ em publicados — `PUT /api/posts/:id` com `pinned` em rascunho/agendado retorna 400 "Apenas comunicados publicados podem ser fixados" e o admin não exibe a ação para não-publicados (`js-pin` só em `status === "publicado"`, selo `badge-pinned`). PWA: selo "Fixado" no card e `sortFeed` com pin como 1ª chave (vence urgência); arquivo mantém data desc. `POST` não aceita `pinned`.
 - **Validade/expiração (I-05)**: `expiresAt` opcional (default null) no model, exposto no payload como `expiresAt` (ISO|null) + `expired` derivado (`expiresAt != null && expiresAt < now`). Sem scheduler — expiração é derivada na consulta (nada é deletado; histórico preservado). Colaborador NUNCA vê expirado: `GET /api/posts` filtra em todas as visões (feed, `archive=active|archived` — expiração é mais forte que idade) e `GET /:id` de expirado → 404; admin não filtra (vê com `expired: true`). Reativar = limpar `expiresAt` (PUT com `expiresAt: ""`/null), mantendo o estado atual (ex.: publicado). `expiresAt` aceita data passada (expiração imediata); formato inválido → 400; nunca bloqueia criar/rascunho/publicar/agendar. Admin: campo "Validade (opcional)" no formulário (vazio = "" nunca "null"; limpar = reativa), selo `badge-expired` + linha "Expira em …" na listagem.
@@ -134,7 +136,7 @@ Autenticação JWT em ambos os frontends. Nenhum conteúdo flui do colaborador a
 - **Badge de não-lidos**: Badging API (`navigator.setAppBadge`), no-op gracioso fora de PWA instalado.
 - Categorias estáticas: Geral, RH, TI, Benefícios.
 - `readMode` do Comunicado: `auto` (lido por dwell de 3s ou scroll até o fim) ou `ack` (botão explícito "Confirmar leitura").
-- Docs de arquitetura: ARCHITECTURE.md e DESIGN.md em cada projeto.
+- Docs de arquitetura: `ARCHITECTURE.md` em cada componente; `DESIGN.md` no `backend` e `frontend_pwa` (não há no `frontend_admin`).
 - Commits em português, estilo PLAIN (sem prefixo semântico).
 
 ## ANTI-PADRÕES / NÃO EXISTE

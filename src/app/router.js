@@ -10,6 +10,7 @@ import * as groupsListView from "../features/groups/list-view.js";
 import * as groupFormView from "../features/groups/form-view.js";
 import * as analyticsListView from "../features/analytics/list-view.js";
 import * as analyticsDetailView from "../features/analytics/detail-view.js";
+import * as dashboardView from "../features/analytics/dashboard-view.js";
 
 function parseRoute() {
   const parts = location.hash.replace(/^#/, "").split("/").filter(Boolean);
@@ -28,6 +29,7 @@ function parseRoute() {
   if (parts[0] === "analytics" && parts.length === 1) return { name: "analytics" };
   if (parts[0] === "analytics" && parts.length === 2)
     return { name: "analytics-detail", id: parts[1] };
+  if (parts[0] === "dashboard" && parts.length === 1) return { name: "dashboard" };
   return { name: "not-found" };
 }
 
@@ -74,6 +76,11 @@ const AUTH_ROUTES = {
       analyticsDetailView.resetGroupFilter();
       analyticsDetailView.render(view, { id: route.id });
     },
+  },
+  dashboard: {
+    title: "Dashboard",
+    active: "dashboard",
+    render: (view) => dashboardView.render(view),
   },
 };
 

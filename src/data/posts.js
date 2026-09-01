@@ -140,11 +140,17 @@ export async function getInteractionAggregate(postId) {
   return res.ok ? await res.json() : null;
 }
 
-export async function getInteractionsSummary() {
+export async function getInteractionsSummary({ desde, ate, groupId } = {}) {
   if (!TOKEN) return {};
-  const res = await fetch(`${API_BASE}/api/interactions/summary`, {
-    headers: { Authorization: `Bearer ${TOKEN}` },
-  });
+  const params = new URLSearchParams();
+  if (desde) params.set("desde", desde);
+  if (ate) params.set("ate", ate);
+  if (groupId) params.set("groupId", groupId);
+  const qs = params.toString();
+  const res = await fetch(
+    `${API_BASE}/api/interactions/summary${qs ? `?${qs}` : ""}`,
+    { headers: { Authorization: `Bearer ${TOKEN}` } }
+  );
   return res.ok ? await res.json() : {};
 }
 

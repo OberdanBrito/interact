@@ -166,17 +166,21 @@ fila funcional deste documento.
   - [x] Módulo de conexão reutilizável pela I-14
 
 ### I-08 — E-mail como fallback de notificação
-- **Descrição:** enviar e-mail ao colaborador quando um comunicado for direcionado a ele (fallback para quem não usa o app).
-- **Componentes:** `backend` (serviço de e-mail + fila)
+- **Descrição:** enviar e-mail ao colaborador quando um comunicado for publicado (publicar agora, publicar rascunho ou liberação de agendado via scheduler I-01). Canal de alcance (fallback): **nesta fase envia-se a todo o público-alvo** — não há rastreio de "uso do app", então não dá para filtrar só quem não usa.
+- **Componentes:** `backend` (serviço de e-mail + fila + integração com rota de posts e scheduler I-01), `frontend_pwa` (deep link do comunicado)
 - **Prioridade:** Baixa
-- **Esforço:** L (1 semana+)
+- **Esforço:** L (1 semana+) — parte crítica é a config externa (Gmail API/DWD) + fila/retry
 - **Status:** Aberto
-- **Decisão/Obrigatoriedade:** e-mail dispara **somente na transição para `published: true`** (publicar agora, publicar rascunho ou liberação de agendado via scheduler I-01); nunca em rascunho; público = mesma regra de visibilidade (broadcast ∪ grupos).
+- **Transporte (decisão):** Gmail API via **service account** do Google Cloud (`interact-enterprise-firebase-adminsdk-fbsvc-*.json`). **Pré-condição:** Domain-Wide Delegation (Google Workspace) — validar antes; se o domínio não for Workspace, trocar o caminho (OAuth2/outra API transacional).
+- **Obrigatoriedade:** e-mail dispara **somente na transição para `published: true`** (publicar agora, publicar rascunho, liberar agendado); nunca em rascunho/edição/agendado não liberado; público = broadcast ∪ grupos; **dedupe por usuário**.
+- **Fila/retry:** fila **persistente** (MongoDB, ex.: `email_queue`), backoff exponencial (máx. 4), falha final loga alerta e **não bloqueia a publicação**.
+- **Link:** `PWA_BASE_URL` (env) + deep link `#/post/<id>` + `?groupId=` quando direcionado; chave e `PWA_BASE_URL` em **env/secret** (nunca commitar — a chave contém `private_key`).
 - **Critérios de aceite:**
-  - [ ] Publicação de comunicado dispara e-mail apenas para o público-alvo
-  - [ ] Falha de envio não bloqueia a publicação (fila + retry)
-  - [ ] E-mail contém título, resumo e link para o PWA
+  - [ ] Publicar comunicado dispara e-mail para o público-alvo (broadcast ∪ grupos), com dedupe por usuário
+  - [ ] Falha de envio não bloqueia a publicação (fila + retry com backoff exponencial)
+  - [ ] E-mail contém título, resumo e link direto para o comunicado no PWA (`PWA_BASE_URL` + deep link)
   - [ ] Agendado dispara e-mail no momento da liberação (não na criação)
+  - [ ] Assinatura/config via service account do Google Cloud + DWD (validado como pré-condição); chave nunca commitada
 
 ---
 

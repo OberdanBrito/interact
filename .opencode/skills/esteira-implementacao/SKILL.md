@@ -203,6 +203,27 @@ Gravar conceitos/camadas/lacunas no megamemory (record) ao concluir.
       após limpar a busca). Para limpar o termo durante o QA, usar **teclado**
       (`Control+A` + `Backspace`, que dispara `input`) ou **reload** da página para resetar o
       estado; não confiar em `fill("")` para resetar campos com handler de debounce.
+17. **Escopo vivo da issue e conflito de push (I-14)**:
+    - **A issue no GitHub é a fonte de verdade e pode MUDAR durante a implementação**: re-confirmar
+      escopo/critérios de aceite (`gh issue view <n> --json state,title,projectItems,body`) logo
+      antes do portão Fase 5 (QA) e antes do encerramento (Fase 8). Nesta rodada o dono reviu a
+      I-14 de "polling ≤60s" para "SSE ≤5s via canal da I-07, Aberto, depende de I-07" enquanto
+      implementávamos o polling; a divergência só apareceu no `git push origin/main`.
+    - **`git push` rejeitado ("fetch first") = o remoto avançou**: NÃO force-push. Fazer
+      `git fetch`, inspecionar o que chegou (`git show <commit> -- <arquivo>`) e, se o remoto
+      redefinir o escopo da issue, **parar e perguntar ao usuário qual versão adotar** — não
+      absorver silenciosamente nem descartar o trabalho alheio.
+    - **"Implementou um fallback" ≠ "issue concluída"**: se o dono redefiniu o mecanismo-alvo, o
+      código que atende o critério original vira só fallback/interino. Manter se útil (ex.:
+      degradação), mas **reabrir** a issue para o status do dono, voltar o board (Done→Todo),
+      postar comentário de correção e **não** fechar.
+    - **Archive/spec refletem o comportamento real + nota do alvo revisado**: se a issue passa a
+      depender de outro mecanismo (ex.: SSE via I-07), registrar no `AGENTS.md`/spec que a
+      implementação atual é interim/fallback e que o spec será atualizado quando o mecanismo real
+      chegar.
+    - **Integrar main que avançou no remoto**: `git reset --hard origin/main` e reaplicar apenas as
+      mudanças intencionais próprias (sem ghosts do mirror de symlinks — regra 16); revisar
+      `git --no-pager diff origin/main -- <file>` antes do commit.
 
 ## Checklist de verificação do dono (conferir periodicamente)
 

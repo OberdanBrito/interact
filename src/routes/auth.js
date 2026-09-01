@@ -17,7 +17,10 @@ router.post("/login", async (req, res) => {
   }
 
   try {
-    const user = await User.findOne({ email: email.toLowerCase() }).lean();
+    const user = await User.findOne({
+      email: email.toLowerCase(),
+      $or: [{ tenantId: req.tenantId }, { tenantId: null }],
+    }).lean();
 
     if (!user) {
       return res.status(401).json({ error: "Credenciais inválidas" });
@@ -39,7 +42,13 @@ router.post("/login", async (req, res) => {
     }));
 
     const token = jwt.sign(
-      { id: user._id, email: user.email, name: user.name, role: user.role },
+      {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        tenantId: req.tenantId ? String(req.tenantId) : null,
+      },
       SECRET,
       { expiresIn: "24h" }
     );
@@ -51,6 +60,7 @@ router.post("/login", async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        tenantId: req.tenantId ? String(req.tenantId) : null,
         groupIds: user.groupIds ?? [],
         groups: groupsSummary,
       },

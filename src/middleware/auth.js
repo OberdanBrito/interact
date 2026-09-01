@@ -15,6 +15,13 @@ export default async function auth(req, res, next) {
   try {
     const payload = jwt.verify(token, SECRET);
     req.user = payload;
+
+    if (String(req.user.tenantId ?? "") !== String(req.tenantId ?? "")) {
+      return res
+        .status(403)
+        .json({ error: "Usuário não pertence a este tenant" });
+    }
+
     const user = await User.findById(payload.id).lean();
     req.user.groupIds = user?.groupIds ?? [];
     next();

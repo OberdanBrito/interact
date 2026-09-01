@@ -171,7 +171,7 @@ fila funcional deste documento.
 - **Prioridade:** Baixa
 - **Esforço:** L (1 semana+) — parte crítica é a config externa (Gmail API/DWD) + fila/retry
 - **Status:** Aberto
-- **Transporte (decisão):** Gmail API via **service account** do Google Cloud (`interact-enterprise-firebase-adminsdk-fbsvc-*.json`). **Pré-condição:** Domain-Wide Delegation (Google Workspace) — validar antes; se o domínio não for Workspace, trocar o caminho (OAuth2/outra API transacional).
+- **Transporte (decisão):** Gmail API via **service account** do Google Cloud (`interact-enterprise-firebase-adminsdk-fbsvc-*.json`). **Google Cloud já ativado** para o projeto `interact-enterprise`. **Pré-condição:** habilitar Gmail API + Domain-Wide Delegation (Google Workspace) e confirmar que o domínio é Workspace; se não for, trocar o caminho (OAuth2/outra API transacional).
 - **Obrigatoriedade:** e-mail dispara **somente na transição para `published: true`** (publicar agora, publicar rascunho, liberar agendado); nunca em rascunho/edição/agendado não liberado; público = broadcast ∪ grupos; **dedupe por usuário**.
 - **Fila/retry:** fila **persistente** (MongoDB, ex.: `email_queue`), backoff exponencial (máx. 4), falha final loga alerta e **não bloqueia a publicação**.
 - **Link:** `PWA_BASE_URL` (env) + deep link `#/post/<id>` + `?groupId=` quando direcionado; chave e `PWA_BASE_URL` em **env/secret** (nunca commitar — a chave contém `private_key`).

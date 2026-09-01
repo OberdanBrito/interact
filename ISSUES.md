@@ -87,6 +87,26 @@ fila funcional deste documento.
   - [ ] Configuração por tenant (ex.: provedor de e-mail da #17, domínio, branding)
   - [ ] Migração dos dados atuais para um tenant padrão (com documentação de rollout)
 
+#### Sub-issues (decomposição) — board dedicado **Multi-Tenant** (Projects v2 #12)
+
+A fundação foi **decomposta em 8 issues ordenadas por dependência**, cada uma atacável por vez
+(via esteira OpenSpec). Arquitetura de base: resolução por **subdomínio** + JWT claim / header
+`X-Tenant-Id`; **single-DB** com `tenantId`; categorias **por tenant**; IDs de comunicado em **UUID**;
+backend único roteado por header.
+
+| # | Issue | Github |
+|---|---|---|
+| MT-19 | Backend: modelo Tenant + resolução/injeção do tenant (D1/D2) | [#19](https://github.com/OberdanBrito/interact/issues/19) |
+| MT-20 | Backend: `tenantId` nos models + índices compostos | [#20](https://github.com/OberdanBrito/interact/issues/20) |
+| MT-21 | Backend: auth e login por tenant | [#21](https://github.com/OberdanBrito/interact/issues/21) |
+| MT-22 | Backend: escopo por tenant em comunicados (posts) + IDs/UUID | [#22](https://github.com/OberdanBrito/interact/issues/22) |
+| MT-23 | Backend: escopo por tenant em grupos, interações e categorias | [#23](https://github.com/OberdanBrito/interact/issues/23) |
+| MT-24 | Backend: scheduler, tempo real (SSE) e migração/seed | [#24](https://github.com/OberdanBrito/interact/issues/24) |
+| MT-25 | Admin: sessão, headers e storage por tenant | [#25](https://github.com/OberdanBrito/interact/issues/25) |
+| MT-26 | PWA: `tenant.js`, storage/Dexie/API_BASE e manifest/SW por tenant | [#26](https://github.com/OberdanBrito/interact/issues/26) |
+
+**Ordem de ataque sugerida:** MT-19 → MT-20 → MT-21 → MT-22 → MT-23 → MT-24 (backend) → MT-25 (admin) → MT-26 (pwa).
+
 ---
 
 ## Publicação

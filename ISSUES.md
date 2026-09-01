@@ -61,7 +61,7 @@ fila funcional deste documento.
 | Issue | GitHub | Projeto |
 |---|---|---|
 | Deploy de produção (CI/CD, PM2/Docker/systemd, secrets, HTTPS, backup) | [#16](https://github.com/OberdanBrito/interact/issues/16) | Infra (#10) |
-| Provedor de e-mail (integração/configuração p/ envio de comunicado — depende da I-08) | [#17](https://github.com/OberdanBrito/interact/issues/17) | Infra (#10) |
+| Provedor de e-mail configurável pelo cliente (BYO provider p/ envio de comunicado; consumido pela I-08; decisão de produto A×B em aberto) | [#17](https://github.com/OberdanBrito/interact/issues/17) | Infra (#10) |
 
 ---
 

@@ -200,14 +200,16 @@ fila funcional deste documento.
 - **Componentes:** `backend` (rota posts — paginação + ordenação movida pro Mongo), `frontend_pwa` (feed.js — remove sort local), `frontend_admin` (list-view)
 - **Prioridade:** Média
 - **Esforço:** G (revisado de M — o redesenho da ordenação no backend é o item que muda a estimativa)
-- **Status:** Aberto
+- **Status:** Concluído
 - **Relação:** recomenda-se implementar depois da I-07 (SSE), para já nascer compatível com posts chegando em tempo real.
+- **Registro:** backend `27f779f` (implementação) + `20033aa` (archive/sync) — branch `backend`; frontend_pwa `ce78071` + `e024720` — branch `frontend_pwa`; frontend_admin `1f86d70` + `650450c` — branch `frontend_admin`. Verificado por `npm run test:integration` (inclui o novo `qa-i10`, 21 ok), `qa-pwa.mjs` 19/19 + QA Playwright (:5173) e build/QA do admin (paginação de 27 → 2 páginas). OpenSpec arquivado em `openspec/changes/archive/2026-09-01-{paginacao-comunicados,infinite-scroll-feed}` nas 3 branches.
+- **Decisão:** cursor = **keyset** (não offset) para estabilidade com inserções concorrentes via SSE; **não-lido calculado no backend** via conjunto `read` do usuário (injeção de `readIds`, sem `$lookup` por documento); **envelope `{ items, nextCursor, hasMore }` condicionado à presença de `limit`/`cursor`** (sem eles retorna array, retrocompatível); **admin com paginação client-side** (lista limitada a `createdBy`, sem a ordenação inteligente).
 - **Critérios de aceite:**
-  - [ ] `GET /api/posts` aceita paginação por cursor (não offset); defaults compatíveis com o comportamento atual
-  - [ ] Ordenação por fixado/urgente/não-lido acontece no backend, não mais no `sortFeed()` do cliente
-  - [ ] PWA carrega mais posts ao rolar sem duplicar e sem "pulos" de não-lidos entre páginas
-  - [ ] Compatível com `?search` (I-09) e `?archive` (I-12) já existentes
-  - [ ] Compatível com posts novos chegando via SSE (I-07) sem desalinhar o cursor
+  - [x] `GET /api/posts` aceita paginação por cursor (não offset); defaults compatíveis com o comportamento atual
+  - [x] Ordenação por fixado/urgente/não-lido acontece no backend, não mais no `sortFeed()` do cliente
+  - [x] PWA carrega mais posts ao rolar sem duplicar e sem "pulos" de não-lidos entre páginas
+  - [x] Compatível com `?search` (I-09) e `?archive` (I-12) já existentes
+  - [x] Compatível com posts novos chegando via SSE (I-07) sem desalinhar o cursor
 
 ### I-11 — Marcar como não-lido
 - **Descrição:** permitir ao colaborador reverter a leitura de um comunicado (hoje só marca como lido).

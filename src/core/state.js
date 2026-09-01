@@ -5,6 +5,11 @@ export const state = {
   search: "",               // dono: feed.js (termo de busca por título/autor; I-09)
   activeGroupId: "todas",   // dono: feed.js (ambiente: "todas" ou id de grupo)
   archive: "active",        // dono: feed.js (visão do feed: "active" | "archived")
+  feed: {                   // dono: feed.js (paginação por cursor; I-10)
+    nextCursor: null,
+    hasMore: false,
+    loading: false,
+  },
   deferredPrompt: null,     // dono: pwa.js
   sheetRestoreFocus: null,  // dono: sheet.js
   sheetPostId: null,        // dono: sheet.js

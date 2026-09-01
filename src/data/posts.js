@@ -18,6 +18,9 @@ export const CATEGORIES = [
 // Deve espelhar ARCHIVE_AFTER_DAYS do backend (mesmo critério nos dois lados).
 export const ARCHIVE_AFTER_DAYS = 30;
 
+// Tamanho padrão de página do feed (I-10) — deve respeitar o MAX_LIMIT do backend.
+export const FEED_PAGE_SIZE = 20;
+
 let TOKEN = null;
 let CACHE = [];
 
@@ -51,8 +54,12 @@ export async function login(email, password) {
   };
 }
 
-export async function getPosts(groupId, { archive, search } = {}) {
-  if (!TOKEN) return [];
+export async function getPosts(
+  groupId,
+  { archive, search, category } = {},
+  { limit = FEED_PAGE_SIZE, cursor = null } = {}
+) {
+  if (!TOKEN) return { items: [], nextCursor: null, hasMore: false };
   try {
     const params = [];
     if (groupId && groupId !== "todas") {
@@ -64,22 +71,45 @@ export async function getPosts(groupId, { archive, search } = {}) {
     if (search) {
       params.push(`search=${encodeURIComponent(search)}`);
     }
-    const url =
-      params.length > 0
-        ? `${API_BASE}/api/posts?${params.join("&")}`
-        : `${API_BASE}/api/posts`;
-    const res = await fetch(url, {
+    if (category && category !== "todas") {
+      params.push(`category=${encodeURIComponent(category)}`);
+    }
+    params.push(`limit=${limit}`);
+    if (cursor) {
+      params.push(`cursor=${encodeURIComponent(cursor)}`);
+    }
+    const res = await fetch(`${API_BASE}/api/posts?${params.join("&")}`, {
       headers: { Authorization: `Bearer ${TOKEN}` },
     });
-    if (!res.ok) return [];
-    const posts = await res.json();
-    CACHE = posts;
-    cachePosts(posts); // persiste no IndexedDB para leitura offline
-    return posts;
+    if (!res.ok) return { items: [], nextCursor: null, hasMore: false };
+    const data = await res.json();
+    // Backend sem paginação (array) — trata como página única (retrocompatível).
+    if (Array.isArray(data)) {
+      return { items: data, nextCursor: null, hasMore: false };
+    }
+    return {
+      items: data.items ?? [],
+      nextCursor: data.nextCursor ?? null,
+      hasMore: Boolean(data.hasMore),
+    };
   } catch {
-    // offline ou rede indisponível: cai para o cache do IndexedDB
-    return filterCachedByGroup(groupId, archive, search);
+    // offline ou rede indisponível: cai para o cache do IndexedDB (recorte acumulado)
+    const cached = await filterCachedByGroup(groupId, archive, search, category);
+    return { items: cached, nextCursor: null, hasMore: false };
   }
+}
+
+// Acumula os itens de páginas no CACHE de trabalho (deduplica por id) e os
+// persiste no IndexedDB. `reset` substitui o recorte (primeira página / troca de filtro).
+export function appendFeedItems(items, { reset = false } = {}) {
+  if (reset) CACHE = [];
+  for (const item of items || []) {
+    const idx = CACHE.findIndex((p) => p.id === item.id);
+    if (idx !== -1) CACHE[idx] = item;
+    else CACHE.push(item);
+  }
+  if (items && items.length > 0) cachePosts(items);
+  return CACHE;
 }
 
 // Regra de visibilidade replicada do backend: admin vê tudo; colaborador
@@ -91,7 +121,7 @@ export function isPostVisibleToUser(post) {
   return targets.some((g) => (state.user?.groupIds || []).includes(g));
 }
 
-async function filterCachedByGroup(groupId, archive, search) {
+async function filterCachedByGroup(groupId, archive, search, category) {
   const cached = await getCachedPosts();
   if (cached.length === 0) return [];
   const cutoff = Date.now() - ARCHIVE_AFTER_DAYS * 24 * 60 * 60 * 1000;
@@ -107,6 +137,7 @@ async function filterCachedByGroup(groupId, archive, search) {
     const time = new Date(post.dateISO || 0).getTime();
     if (archive === "active" && time < cutoff) return false;
     if (archive === "archived" && time >= cutoff) return false;
+    if (category && category !== "todas" && post.categoryId !== category) return false;
     if (term) {
       const title = String(post.title || "").toLowerCase();
       const author = String(post.author?.name || "").toLowerCase();

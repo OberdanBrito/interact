@@ -40,6 +40,22 @@ const dotVisible = (pid) =>
     return d ? !d.hidden : null;
   }, pid);
 
+// Rola o feed até o fim para carregar todas as páginas (I-10 infinite scroll),
+// fazendo os posts antigos do seed voltarem ao DOM antes dos checks.
+const loadAllPosts = async () => {
+  await page.evaluate(async () => {
+    for (let i = 0; i < 20; i++) {
+      window.scrollTo(0, document.body.scrollHeight);
+      await new Promise((r) => setTimeout(r, 350));
+      const sentinel = document.querySelector("#feed-sentinel");
+      const status = document.querySelector("#feed-status");
+      if (sentinel && sentinel.hidden) break;
+      if (status && !status.hidden && status.textContent.includes("fim")) break;
+    }
+  });
+  await page.waitForTimeout(300);
+};
+
 try {
   // 1. First load → login
   await page.goto(BASE, { waitUntil: "load" });
@@ -53,6 +69,8 @@ try {
   await page.fill("#login-pass", "senha123");
   await page.click("#btn-login");
   await page.waitForTimeout(1500);
+
+  await loadAllPosts();
 
   const feedState = await page.evaluate(() => {
     const session = JSON.parse(localStorage.getItem("interact.session") || "{}");
@@ -137,6 +155,7 @@ try {
   );
   await page.reload({ waitUntil: "load" });
   await page.waitForTimeout(700);
+  await loadAllPosts();
 
   await page.locator('.post-card[data-post-id="p05"] .js-open-post').click();
   await page.waitForTimeout(3400);

@@ -1,6 +1,14 @@
 import { state } from "../../core/state.js";
 import { $, STORAGE_KEYS, storageGet, storageSet } from "../../core/utils.js";
-import { getCategories, getPosts, getUserGroups, applyRealtimeEvent, getVisibleCacheFeed } from "../../data/posts.js";
+import {
+  getCategories,
+  getPosts,
+  getUserGroups,
+  applyRealtimeEvent,
+  getVisibleCacheFeed,
+  appendFeedItems,
+  FEED_PAGE_SIZE,
+} from "../../data/posts.js";
 import { connect, disconnect, on } from "../../data/events.js";
 import { getUserData } from "../auth/session.js";
 import { refreshBadge } from "../notifications/badge.js";
@@ -14,6 +22,12 @@ const ARCHIVE_VIEWS = [
 ];
 
 const SEARCH_DEBOUNCE_MS = 250;
+
+const STATUS_LOADING = "Carregando mais…";
+const STATUS_END = "Você chegou ao fim da lista.";
+
+let feedEpoch = 0;
+let sentinelObserver = null;
 
 export function resetFilter() {
   state.filter = "todas";
@@ -99,38 +113,74 @@ export function renderEnvSelector() {
   }
 }
 
-// Ordenação inteligente: fixados primeiro (I-04), depois urgentes, depois não-lidos, depois mais recentes.
-function sortFeed(posts) {
+// Busca uma página de comunicados do recorte atual (I-10).
+async function fetchPage({ limit = FEED_PAGE_SIZE, cursor = null } = {}) {
+  return getPosts(
+    state.activeGroupId,
+    { archive: state.archive, search: state.search, category: state.filter },
+    { limit, cursor }
+  );
+}
+
+function resetFeedPaging() {
+  state.feed.nextCursor = null;
+  state.feed.hasMore = false;
+  state.feed.loading = false;
+  sentinelObserver?.disconnect();
+  sentinelObserver = null;
+}
+
+function updateFeedStatus() {
+  const status = $("#feed-status");
+  const sentinel = $("#feed-sentinel");
+  const hasCards = $("#post-list").children.length > 0;
+  if (state.feed.loading) {
+    status.textContent = STATUS_LOADING;
+    status.hidden = false;
+  } else if (!state.feed.hasMore && hasCards) {
+    status.textContent = STATUS_END;
+    status.hidden = false;
+  } else {
+    status.hidden = true;
+  }
+  if (sentinel) sentinel.hidden = !state.feed.hasMore;
+}
+
+function observeFeedSentinel() {
+  const sentinel = $("#feed-sentinel");
+  if (!sentinel) return;
+  if (!state.feed.hasMore) {
+    sentinelObserver?.disconnect();
+    sentinelObserver = null;
+    return;
+  }
+  if (sentinelObserver) return;
+  sentinelObserver = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((e) => e.isIntersecting)) loadMore();
+    },
+    { rootMargin: "200px" }
+  );
+  sentinelObserver.observe(sentinel);
+}
+
+function appendPage(items) {
+  if (!items || items.length === 0) return;
+  const list = $("#post-list");
   const userData = getUserData();
-  return [...posts].sort((a, b) => {
-    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-    if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-    const aUnread = !userData.read.includes(a.id);
-    const bUnread = !userData.read.includes(b.id);
-    if (aUnread !== bUnread) return aUnread ? -1 : 1;
-    const aTime = new Date(a.dateISO || 0).getTime();
-    const bTime = new Date(b.dateISO || 0).getTime();
-    return bTime - aTime;
-  });
-}
-
-// Ordenação da visão "Arquivo": antigos por data (mais recente do grupo primeiro).
-function sortByDate(posts) {
-  return [...posts].sort((a, b) => {
-    const aTime = new Date(a.dateISO || 0).getTime();
-    const bTime = new Date(b.dateISO || 0).getTime();
-    return bTime - aTime;
-  });
-}
-
-async function visiblePosts() {
-  const posts = await getPosts(state.activeGroupId, {
-    archive: state.archive,
-    search: state.search,
-  });
-  const filtered =
-    state.filter === "todas" ? posts : posts.filter((post) => post.categoryId === state.filter);
-  return state.archive === "archived" ? sortByDate(filtered) : sortFeed(filtered);
+  const html = items
+    .filter((post) => !list.querySelector(`[data-post-id="${post.id}"]`))
+    .map((post) =>
+      postCardHTML(post, {
+        liked: userData.likes.includes(post.id),
+        read: userData.read.includes(post.id),
+      })
+    )
+    .join("");
+  if (html) {
+    list.insertAdjacentHTML("beforeend", html);
+    refreshBadge();
+  }
 }
 
 export function renderChips() {
@@ -199,8 +249,35 @@ function renderPostList(posts) {
 }
 
 export async function renderFeed() {
-  const posts = await visiblePosts();
-  renderPostList(posts);
+  const epoch = ++feedEpoch;
+  resetFeedPaging();
+  const page = await fetchPage({ limit: FEED_PAGE_SIZE });
+  if (epoch !== feedEpoch) return;
+  appendFeedItems(page.items, { reset: true });
+  state.feed.nextCursor = page.nextCursor;
+  state.feed.hasMore = page.hasMore;
+  renderPostList(getVisibleCacheFeed());
+  updateFeedStatus();
+  observeFeedSentinel();
+}
+
+export async function loadMore() {
+  if (state.feed.loading || !state.feed.hasMore) return;
+  const epoch = feedEpoch;
+  state.feed.loading = true;
+  updateFeedStatus();
+  const page = await fetchPage({
+    limit: FEED_PAGE_SIZE,
+    cursor: state.feed.nextCursor,
+  });
+  if (epoch !== feedEpoch) return;
+  appendFeedItems(page.items, { reset: false });
+  state.feed.nextCursor = page.nextCursor;
+  state.feed.hasMore = page.hasMore;
+  state.feed.loading = false;
+  appendPage(page.items);
+  updateFeedStatus();
+  observeFeedSentinel();
 }
 
 let realtimeBound = false;
@@ -229,8 +306,6 @@ export function stopRealtime() {
 }
 
 function renderFeedFromCache() {
-  const posts = getVisibleCacheFeed();
-  const sorted =
-    state.archive === "archived" ? sortByDate(posts) : sortFeed(posts);
-  renderPostList(sorted);
+  renderPostList(getVisibleCacheFeed());
+  updateFeedStatus();
 }

@@ -136,8 +136,8 @@ check(
   JSON.stringify(listAIds)
 );
 check(
-  "admin A vê legado null (ponte)",
-  listAIds.includes("mt22-legacy"),
+  "admin A NÃO vê legado null (estrito)",
+  !listAIds.includes("mt22-legacy"),
   JSON.stringify(listAIds)
 );
 
@@ -164,7 +164,7 @@ check("GET /:id Post B a partir de A -> 404", getBFromA.status === 404, JSON.str
 const getAFromA = await req("GET", `/posts/${postA._id}`, null, tokA, "tenanta");
 check("GET /:id Post A a partir de A -> 200", getAFromA.status === 200);
 const getLegacyFromA = await req("GET", `/posts/${legacyPost._id}`, null, tokA, "tenanta");
-check("GET /:id legado null a partir de A -> 200 (ponte)", getLegacyFromA.status === 200);
+check("GET /:id legado null a partir de A -> 404 (estrito)", getLegacyFromA.status === 404);
 
 // Mutação cross-tenant: PUT e DELETE -> 404 sem revelar existência
 const putBFromA = await req("PUT", `/posts/${postB._id}`, { title: "invadir" }, tokA, "tenanta");

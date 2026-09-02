@@ -2,6 +2,7 @@ import "dotenv/config";
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 import User from "../src/models/User.js";
+import Tenant from "../src/models/Tenant.js";
 import Comunicado from "../src/models/Comunicado.js";
 import app from "../src/app.js";
 import { startExpiredSweep } from "../src/scheduler.js";
@@ -13,11 +14,15 @@ process.env.MONGODB_URI =
 await mongoose.connect(process.env.MONGODB_URI);
 await mongoose.connection.dropDatabase();
 
+const tenant = await Tenant.create({ slug: "i07", name: "Tenant I-07", active: true });
+const TENANT_SLUG = tenant.slug;
+
 const admin = await User.create({
   email: "admin.i07@interactcorp.com.br",
   password_hash: bcrypt.hashSync("senha123", 10),
   name: "Admin I-07",
   role: "admin",
+  tenantId: tenant._id,
 });
 const collab = await User.create({
   email: "colab.i07@interactcorp.com.br",
@@ -25,14 +30,16 @@ const collab = await User.create({
   name: "Colab I-07",
   role: "colaborador",
   groupIds: [],
+  tenantId: tenant._id,
 });
 
 const server = app.listen(4009);
 const base = "http://localhost:4009/api";
 
-async function req(method, path, body, token) {
+async function req(method, path, body, token, tenantSlug) {
   const headers = { "Content-Type": "application/json" };
   if (token) headers.Authorization = `Bearer ${token}`;
+  if (tenantSlug) headers["X-Tenant-Slug"] = tenantSlug;
   const res = await fetch(`${base}${path}`, {
     method,
     headers,
@@ -129,7 +136,7 @@ function openEvents(token) {
 const adminLogin = await req("POST", "/auth/login", {
   email: admin.email,
   password: "senha123",
-});
+}, null, TENANT_SLUG);
 const adminTok = adminLogin.data.token;
 check("login admin", !!adminTok);
 
@@ -156,7 +163,8 @@ check("login admin", !!adminTok);
     "POST",
     "/posts",
     { title: "Publicado i07", categoryId: "geral", body: ["olá"] },
-    adminTok
+    adminTok,
+    TENANT_SLUG
   );
   const ev = await s.waitFor("post:new");
   check("post:new apos publicar", ev.data.id === created.data.id, JSON.stringify(ev.data));
@@ -169,10 +177,11 @@ check("login admin", !!adminTok);
     "POST",
     "/posts",
     { title: "Para editar i07", categoryId: "geral", body: ["x"] },
-    adminTok
+    adminTok,
+    TENANT_SLUG
   );
   const s = openEvents(adminTok);
-  const updated = await req("PUT", `/posts/${created.data.id}`, { title: "Editado i07" }, adminTok);
+  const updated = await req("PUT", `/posts/${created.data.id}`, { title: "Editado i07" }, adminTok, TENANT_SLUG);
   const ev = await s.waitFor("post:updated");
   check("post:updated apos editar", ev.data.id === created.data.id && updated.status === 200, JSON.stringify(ev.data));
   s.close();
@@ -181,7 +190,7 @@ check("login admin", !!adminTok);
 // 5) Rascunho NÃO emite post:new
 {
   const s = openEvents(adminTok);
-  await req("POST", "/posts", { title: "draft i07", status: "draft" }, adminTok);
+  await req("POST", "/posts", { title: "draft i07", status: "draft" }, adminTok, TENANT_SLUG);
   const noEvt = await s.notWithin("post:new", 1500);
   check("rascunho nao emite post:new", noEvt === true);
   s.close();
@@ -198,7 +207,8 @@ check("login admin", !!adminTok);
       body: ["validade vencida"],
       expiresAt: "2020-01-01T00:00:00Z",
     },
-    adminTok
+    adminTok,
+    TENANT_SLUG
   );
   const s = openEvents(adminTok);
   await s.connected;

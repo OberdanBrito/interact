@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
 
-// Escopo por tenant (MT-22/MT-23): casa o tenant resolvido OU o legado `null` (ponte de
-// transição até o backfill da MT-24). Documentos de OUTRO tenant nunca são casados.
+// Escopo por tenant (MT-24 — estrito): casa SOMENTE o tenant resolvido. Sem ponte para o
+// legado `null` (removida no backfill da MT-24): documentos de outro tenant ou legados
+// (`tenantId` nulo) NUNCA são casados.
 // Normaliza o id para ObjectId: o filtro é usado tanto em find() quanto no $match de
 // agregations (que não faz cast automático de tipo).
 export function tenantScopeCondition(tenantId) {
@@ -9,11 +10,11 @@ export function tenantScopeCondition(tenantId) {
   const tid = mongoose.Types.ObjectId.isValid(tenantId)
     ? new mongoose.Types.ObjectId(tenantId)
     : tenantId;
-  return { $or: [{ tenantId: tid }, { tenantId: null }] };
+  return { tenantId: tid };
 }
 
-// Verifica se um documento pertence ao escopo do tenant (MT-22/MT-23):
-// documento legado (tenantId nulo) é aceito na transição; de outro tenant, não.
+// Verifica se um documento pertence ao escopo do tenant (MT-24 — estrito):
+// aceita SOMENTE candidato cujo tenantId é exatamente o tenant da requisição.
 export function inTenantScope(doc, tenantId) {
-  return doc.tenantId == null || String(doc.tenantId) === String(tenantId);
+  return String(doc.tenantId) === String(tenantId);
 }

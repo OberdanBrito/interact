@@ -48,6 +48,7 @@ export async function toPost(doc) {
       role: doc.author?.role ?? null,
     },
     dateISO: doc.dateISO ? new Date(doc.dateISO).toISOString() : null,
+    tenantId: doc.tenantId ? String(doc.tenantId) : null,
     targetGroups,
     createdBy: doc.createdBy ? String(doc.createdBy) : null,
     targetGroupNames,
@@ -158,11 +159,9 @@ function isPostEligible(doc, user) {
   const targetGroups = doc.targetGroups ?? [];
   const expired =
     doc.expiresAt != null && new Date(doc.expiresAt).getTime() < Date.now();
-  // Escopo por tenant (MT-22): comunicado legado (tenantId nulo) continua elegível
-  // na transição; comunicado de OUTRO tenant nunca é elegível.
-  const docTenant = doc.tenantId ? String(doc.tenantId) : null;
-  const userTenant = user.tenantId ? String(user.tenantId) : null;
-  if (docTenant !== null && docTenant !== userTenant) {
+  // Escopo por tenant (MT-24 — estrito): comunicado é elegível SOMENTE se o
+  // tenantId casa exatamente com o tenant do usuário; legado (null) nunca é elegível.
+  if (String(doc.tenantId) !== String(user.tenantId)) {
     return false;
   }
   if (user.role === "admin") {

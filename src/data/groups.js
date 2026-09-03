@@ -1,38 +1,25 @@
 /* Camada de dados de grupos, conectada ao backend real (Express + MongoDB).
-   Mesmo padrão de data/posts.js: fetch + Bearer token.
+   Usa a camada HTTP central (http.js) — mesmo padrão de data/posts.js.
    Contrato estável consumido pelas views:
    mantenha as assinaturas das funções exportadas. */
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3002";
+import { getToken, setToken as httpSetToken, apiGet, apiPost, apiPut } from "./http.js";
 
 /* Schema do grupo: { id, name: string, active: boolean } */
 
-let TOKEN = null;
-
 export function setToken(token) {
-  TOKEN = token || null;
+  httpSetToken(token);
 }
 
-const authHeaders = () => ({
-  Authorization: `Bearer ${TOKEN}`,
-  "Content-Type": "application/json",
-});
-
 export async function listGroups() {
-  if (!TOKEN) return [];
-  const res = await fetch(`${API_BASE}/api/groups`, {
-    headers: { Authorization: `Bearer ${TOKEN}` },
-  });
+  if (!getToken()) return [];
+  const res = await apiGet("/api/groups");
   if (!res.ok) return [];
   return await res.json();
 }
 
 export async function createGroup(data) {
-  const res = await fetch(`${API_BASE}/api/groups`, {
-    method: "POST",
-    headers: authHeaders(),
-    body: JSON.stringify(data),
-  });
+  const res = await apiPost("/api/groups", data);
   if (!res.ok) {
     throw new Error((await res.json()).error || "Erro ao criar grupo");
   }
@@ -40,11 +27,7 @@ export async function createGroup(data) {
 }
 
 export async function updateGroup(id, data) {
-  const res = await fetch(`${API_BASE}/api/groups/${id}`, {
-    method: "PUT",
-    headers: authHeaders(),
-    body: JSON.stringify(data),
-  });
+  const res = await apiPut(`/api/groups/${id}`, data);
   if (!res.ok) {
     throw new Error((await res.json()).error || "Erro ao editar grupo");
   }
@@ -52,11 +35,7 @@ export async function updateGroup(id, data) {
 }
 
 export async function getRecipientCount(targetGroups) {
-  const res = await fetch(`${API_BASE}/api/groups/recipient-count`, {
-    method: "POST",
-    headers: authHeaders(),
-    body: JSON.stringify({ targetGroups }),
-  });
+  const res = await apiPost("/api/groups/recipient-count", { targetGroups });
   if (!res.ok) {
     throw new Error("Erro ao calcular destinatários");
   }

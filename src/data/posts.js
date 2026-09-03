@@ -2,7 +2,15 @@
    Contrato estável consumido pelas views:
    mantenha as assinaturas das funções exportadas. */
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3002";
+import {
+  API_BASE,
+  getToken,
+  setToken as httpSetToken,
+  apiGet,
+  apiPost,
+  apiPut,
+  apiDelete,
+} from "./http.js";
 
 /* "todas" não é categoria — existe apenas como filtro na listagem. */
 export const CATEGORIES = [
@@ -12,66 +20,45 @@ export const CATEGORIES = [
   { id: "beneficios", label: "Benefícios" },
 ];
 
-/* Schema do comunicado (mesmo consumido pela PWA irmã):
-   { id, readMode: "auto" | "ack", categoryId, urgent: boolean,
-     likeBase: number, title: string, body: string[],
-     author: { name, role }, dateISO } */
-/* Campos de agendamento (I-01):
-   publishAt: ISO | null (futuro = agendado), published: boolean,
-   status: "publicado" | "agendado" */
-/* Campos de rascunho (I-02):
-   status: "rascunho" — salvo sem publicar, editável com campos incompletos.
-   createPost/updatePost repassam `status` no payload conforme a ação. */
-
-let TOKEN = null;
-
 export function setToken(token) {
-  TOKEN = token || null;
+  httpSetToken(token);
 }
 
-const authHeaders = () => ({
-  Authorization: `Bearer ${TOKEN}`,
-  "Content-Type": "application/json",
-});
-
-export async function login(email, password) {
+export async function login(email, password, tenantSlug) {
   const res = await fetch(`${API_BASE}/api/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-Tenant-Slug": tenantSlug },
     body: JSON.stringify({ email, password }),
   });
   if (!res.ok) {
     throw new Error("Credenciais inválidas. Verifique o e-mail e a senha.");
   }
   const data = await res.json();
-  TOKEN = data.token;
-  return { email: data.user.email, name: data.user.name, token: data.token };
+  return {
+    email: data.user.email,
+    name: data.user.name,
+    role: data.user.role,
+    tenantId: data.user.tenantId,
+    token: data.token,
+  };
 }
 
 export async function listPosts() {
-  if (!TOKEN) return [];
-  const res = await fetch(`${API_BASE}/api/posts`, {
-    headers: { Authorization: `Bearer ${TOKEN}` },
-  });
+  if (!getToken()) return [];
+  const res = await apiGet("/api/posts");
   if (!res.ok) return [];
   const posts = await res.json();
   return [...posts].sort((a, b) => new Date(b.dateISO) - new Date(a.dateISO));
 }
 
 export async function getPost(id) {
-  if (!TOKEN) return null;
-  const res = await fetch(`${API_BASE}/api/posts/${id}`, {
-    headers: { Authorization: `Bearer ${TOKEN}` },
-  });
+  if (!getToken()) return null;
+  const res = await apiGet(`/api/posts/${id}`);
   return res.ok ? await res.json() : null;
 }
 
 export async function createPost(data) {
-  const res = await fetch(`${API_BASE}/api/posts`, {
-    method: "POST",
-    headers: authHeaders(),
-    body: JSON.stringify(data),
-  });
+  const res = await apiPost("/api/posts", data);
   if (!res.ok) {
     throw new Error("Não foi possível publicar o comunicado.");
   }
@@ -79,11 +66,7 @@ export async function createPost(data) {
 }
 
 export async function updatePost(id, data) {
-  const res = await fetch(`${API_BASE}/api/posts/${id}`, {
-    method: "PUT",
-    headers: authHeaders(),
-    body: JSON.stringify(data),
-  });
+  const res = await apiPut(`/api/posts/${id}`, data);
   if (!res.ok) {
     throw new Error("Não foi possível salvar as alterações.");
   }
@@ -91,10 +74,7 @@ export async function updatePost(id, data) {
 }
 
 export async function deletePost(id) {
-  const res = await fetch(`${API_BASE}/api/posts/${id}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${TOKEN}` },
-  });
+  const res = await apiDelete(`/api/posts/${id}`);
   return res.ok;
 }
 
@@ -103,11 +83,7 @@ export async function deletePost(id) {
 export async function uploadAttachment(postId, file) {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch(`${API_BASE}/api/posts/${postId}/attachments`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${TOKEN}` },
-    body: form,
-  });
+  const res = await apiPost(`/api/posts/${postId}/attachments`, form);
   const data = res.ok ? await res.json() : null;
   if (!res.ok) {
     throw new Error(data?.error || "Não foi possível anexar o arquivo.");
@@ -116,12 +92,8 @@ export async function uploadAttachment(postId, file) {
 }
 
 export async function deleteAttachment(postId, attachmentId) {
-  const res = await fetch(
-    `${API_BASE}/api/posts/${postId}/attachments/${encodeURIComponent(attachmentId)}`,
-    {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${TOKEN}` },
-    }
+  const res = await apiDelete(
+    `/api/posts/${postId}/attachments/${encodeURIComponent(attachmentId)}`
   );
   return res.ok;
 }
@@ -132,33 +104,26 @@ export function getCategoryLabel(categoryId) {
 }
 
 export async function getInteractionAggregate(postId) {
-  if (!TOKEN) return null;
-  const res = await fetch(
-    `${API_BASE}/api/interactions?postId=${encodeURIComponent(postId)}`,
-    { headers: { Authorization: `Bearer ${TOKEN}` } }
-  );
+  if (!getToken()) return null;
+  const res = await apiGet(`/api/interactions?postId=${encodeURIComponent(postId)}`);
   return res.ok ? await res.json() : null;
 }
 
 export async function getInteractionsSummary({ desde, ate, groupId } = {}) {
-  if (!TOKEN) return {};
+  if (!getToken()) return {};
   const params = new URLSearchParams();
   if (desde) params.set("desde", desde);
   if (ate) params.set("ate", ate);
   if (groupId) params.set("groupId", groupId);
   const qs = params.toString();
-  const res = await fetch(
-    `${API_BASE}/api/interactions/summary${qs ? `?${qs}` : ""}`,
-    { headers: { Authorization: `Bearer ${TOKEN}` } }
-  );
+  const res = await apiGet(`/api/interactions/summary${qs ? `?${qs}` : ""}`);
   return res.ok ? await res.json() : {};
 }
 
 export async function getInteractionMembers(postId) {
-  if (!TOKEN) return [];
-  const res = await fetch(
-    `${API_BASE}/api/interactions/members?postId=${encodeURIComponent(postId)}`,
-    { headers: { Authorization: `Bearer ${TOKEN}` } }
+  if (!getToken()) return [];
+  const res = await apiGet(
+    `/api/interactions/members?postId=${encodeURIComponent(postId)}`
   );
   return res.ok ? await res.json() : [];
 }

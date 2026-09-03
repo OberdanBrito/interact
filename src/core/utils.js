@@ -1,7 +1,12 @@
 export const STORAGE_KEYS = {
-  session: "interact-admin/session",
   posts: "interact-admin/posts",
 };
+
+/* Chave de sessão isolada por tenant (MT-25): dois tenants no mesmo browser
+   não sobrescrevem a sessão um do outro. */
+export function sessionKey(slug) {
+  return `interact-admin:${slug}/session`;
+}
 
 export const $ = (sel) => document.querySelector(sel);
 

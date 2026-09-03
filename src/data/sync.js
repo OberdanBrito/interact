@@ -1,7 +1,7 @@
 import { syncInteraction } from "./posts.js";
-import { STORAGE_KEYS, storageGet, storageSet } from "../core/utils.js";
+import { syncQueueKey, storageGet, storageSet } from "../core/utils.js";
 
-const QUEUE_KEY = STORAGE_KEYS.syncQueue;
+const QUEUE_KEY = syncQueueKey();
 let flushing = false;
 
 function readQueue() {

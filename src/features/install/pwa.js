@@ -1,6 +1,7 @@
 import { registerSW } from "virtual:pwa-register";
 import { state } from "../../core/state.js";
-import { $, STORAGE_KEYS, storageGet, storageSet } from "../../core/utils.js";
+import { getTenantSlug } from "../../core/tenant.js";
+import { $, dismissInstallKey, storageGet, storageSet } from "../../core/utils.js";
 import { showToast } from "../../ui/toast.js";
 
 function isIOS() {
@@ -8,7 +9,7 @@ function isIOS() {
 }
 
 function maybeShowInstallBanner() {
-  if (storageGet(STORAGE_KEYS.dismissInstall, false)) return;
+  if (storageGet(dismissInstallKey(), false)) return;
   if (state.deferredPrompt) {
     $("#install-hint").textContent =
       "Acesso rápido direto da sua tela inicial.";
@@ -31,10 +32,47 @@ async function handleInstallClick() {
 
 function dismissInstallBanner() {
   $("#install-banner").hidden = true;
-  storageSet(STORAGE_KEYS.dismissInstall, true);
+  storageSet(dismissInstallKey(), true);
+}
+
+/* Manifest por tenant (MT-26): injeta um manifest.webmanifest (Blob) com nome/scope
+   do tenant antes do registerSW — o SW permanece por origem/scope (isolamento por subdomínio). */
+export function applyTenantManifest() {
+  const slug = getTenantSlug();
+  const manifest = {
+    name: `Interact — ${slug}`,
+    short_name: "Interact",
+    description: "Comunicação interna entre empresa e colaboradores",
+    id: "/",
+    start_url: "/",
+    scope: "/",
+    display: "standalone",
+    orientation: "portrait",
+    lang: "pt-BR",
+    dir: "ltr",
+    theme_color: "#0F2B52",
+    background_color: "#F4F7FB",
+    categories: ["business", "productivity"],
+    icons: [
+      { src: "/assets/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { src: "/assets/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      {
+        src: "/assets/icons/maskable-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
+      },
+    ],
+  };
+  const blob = new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" });
+  const link = document.createElement("link");
+  link.rel = "manifest";
+  link.href = URL.createObjectURL(blob);
+  document.head.appendChild(link);
 }
 
 export function initPWA() {
+  applyTenantManifest();
   registerSW({ immediate: true });
 
   $("#btn-install").addEventListener("click", handleInstallClick);

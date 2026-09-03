@@ -1,6 +1,7 @@
 export const state = {
   user: null,               // dono: session.js
   userData: null,           // dono: session.js ({ likes: [], read: [] })
+  tenant: null,             // dono: tenant.js — { subdomain, slug, apiBase } (MT-26)
   filter: "todas",          // dono: feed.js
   search: "",               // dono: feed.js (termo de busca por título/autor; I-09)
   activeGroupId: "todas",   // dono: feed.js (ambiente: "todas" ou id de grupo)

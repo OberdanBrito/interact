@@ -1,10 +1,22 @@
-export const STORAGE_KEYS = {
-  session: "interact.session",
-  dismissInstall: "interact.installDismissed",
-  userPrefix: "interact.user.",
-  lastGroup: "interact.lastGroup",
-  syncQueue: "interact.syncQueue",
-};
+import { getTenantSlug } from "./tenant.js";
+
+// Chaves de storage isoladas por tenant (MT-26): o slug do subdomínio é a identidade
+// do tenant na URL (conhecida no bootstrap); o tenantId fica dentro da sessão.
+export function sessionKey() {
+  return `interact.${getTenantSlug()}.session`;
+}
+export function userDataKey(email) {
+  return `interact.${getTenantSlug()}.user.${email}`;
+}
+export function syncQueueKey() {
+  return `interact.${getTenantSlug()}.syncQueue`;
+}
+export function lastGroupKey() {
+  return `interact.${getTenantSlug()}.lastGroup`;
+}
+export function dismissInstallKey() {
+  return `interact.${getTenantSlug()}.installDismissed`;
+}
 
 export const REDUCED_MOTION = window.matchMedia(
   "(prefers-reduced-motion: reduce)"

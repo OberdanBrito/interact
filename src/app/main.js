@@ -1,5 +1,6 @@
 import { state } from "../core/state.js";
 import { $, initialsOf } from "../core/utils.js";
+import { resolveTenant } from "../core/tenant.js";
 import { restoreSession, login, logout, getCurrentUser, restoreInteractions } from "../features/auth/session.js";
 import { renderArchiveTabs, renderChips, renderEnvSelector, renderFeed, resetActiveGroup, resetFilter, resetSearch, bindSearchInput, startRealtime, stopRealtime } from "../features/feed/feed.js";
 import {
@@ -107,6 +108,8 @@ function handleLogout() {
 }
 
 function init() {
+  resolveTenant();
+
   $("#login-form").addEventListener("submit", handleLogin);
   $("#btn-logout").addEventListener("click", handleLogout);
 

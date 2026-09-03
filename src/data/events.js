@@ -1,6 +1,5 @@
 import { getToken } from "./posts.js";
-
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3002";
+import { getApiBase } from "../core/tenant.js";
 
 const POLL_INTERVAL_MS = 60000;
 const MAX_SSE_FAILURES = 3;
@@ -58,7 +57,7 @@ export function connect(onPoll) {
     /* já fechado */
   }
   attached.clear();
-  source = new EventSource(`${API_BASE}/api/events?token=${token}`);
+  source = new EventSource(`${getApiBase()}/api/events?token=${token}`);
   source.onopen = () => {
     failureCount = 0;
     stopPolling();

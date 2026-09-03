@@ -2,9 +2,8 @@
    Categorias permanecem estáticas; posts e autenticação vêm da API. */
 
 import { state } from "../core/state.js";
+import { getApiBase } from "../core/tenant.js";
 import { cachePosts, getCachedPosts, getCachedPost, removeCachedPost } from "./cache.js";
-
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3002";
 
 export const CATEGORIES = [
   { id: "todas", label: "Todas" },
@@ -34,9 +33,12 @@ export function getToken() {
 }
 
 export async function login(email, password) {
-  const res = await fetch(`${API_BASE}/api/auth/login`, {
+  const res = await fetch(`${getApiBase()}/api/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-Tenant-Slug": state.tenant?.slug || "interna",
+    },
     body: JSON.stringify({ email, password }),
   });
   if (!res.ok) {
@@ -78,7 +80,7 @@ export async function getPosts(
     if (cursor) {
       params.push(`cursor=${encodeURIComponent(cursor)}`);
     }
-    const res = await fetch(`${API_BASE}/api/posts?${params.join("&")}`, {
+    const res = await fetch(`${getApiBase()}/api/posts?${params.join("&")}`, {
       headers: { Authorization: `Bearer ${TOKEN}` },
     });
     if (!res.ok) return { items: [], nextCursor: null, hasMore: false };
@@ -241,7 +243,7 @@ export function getCategoryLabel(categoryId) {
 export async function syncInteraction(postId, { liked, read } = {}) {
   if (!TOKEN) return false;
   try {
-    const res = await fetch(`${API_BASE}/api/interactions/${postId}`, {
+    const res = await fetch(`${getApiBase()}/api/interactions/${postId}`, {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${TOKEN}`,
@@ -260,7 +262,7 @@ export async function syncInteraction(postId, { liked, read } = {}) {
 export async function fetchMyInteractions() {
   if (!TOKEN) return {};
   try {
-    const res = await fetch(`${API_BASE}/api/interactions/me`, {
+    const res = await fetch(`${getApiBase()}/api/interactions/me`, {
       headers: { Authorization: `Bearer ${TOKEN}` },
     });
     return res.ok ? await res.json() : {};
@@ -270,5 +272,5 @@ export async function fetchMyInteractions() {
 }
 
 export function getAttachmentUrl(postId, attachmentId) {
-  return `${API_BASE}/api/posts/${postId}/attachments/${attachmentId}`;
+  return `${getApiBase()}/api/posts/${postId}/attachments/${attachmentId}`;
 }

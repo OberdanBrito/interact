@@ -1,5 +1,5 @@
 import { state } from "../../core/state.js";
-import { $, STORAGE_KEYS, storageGet, storageSet } from "../../core/utils.js";
+import { $, lastGroupKey, storageGet, storageSet } from "../../core/utils.js";
 import {
   getCategories,
   getPosts,
@@ -42,7 +42,7 @@ export function resetSearch() {
 export function resetActiveGroup() {
   state.activeGroupId = ALL_GROUPS_ID;
   try {
-    localStorage.removeItem(STORAGE_KEYS.lastGroup);
+    localStorage.removeItem(lastGroupKey());
   } catch {
     /* armazenamento indisponível */
   }
@@ -50,7 +50,7 @@ export function resetActiveGroup() {
 
 function restoreActiveGroup() {
   const groups = getUserGroups();
-  const saved = storageGet(STORAGE_KEYS.lastGroup, ALL_GROUPS_ID);
+  const saved = storageGet(lastGroupKey(), ALL_GROUPS_ID);
   state.activeGroupId =
     saved !== ALL_GROUPS_ID && groups.some((group) => group.id === saved)
       ? saved
@@ -105,7 +105,7 @@ export function renderEnvSelector() {
     chip.addEventListener("click", () => {
       if (state.activeGroupId === option.id) return;
       state.activeGroupId = option.id;
-      storageSet(STORAGE_KEYS.lastGroup, option.id);
+      storageSet(lastGroupKey(), option.id);
       renderEnvSelector();
       renderFeed();
     });

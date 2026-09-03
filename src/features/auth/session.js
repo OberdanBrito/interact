@@ -1,5 +1,5 @@
 import { state } from "../../core/state.js";
-import { STORAGE_KEYS, storageGet, storageSet } from "../../core/utils.js";
+import { sessionKey, userDataKey, storageGet, storageSet } from "../../core/utils.js";
 import { login as apiLogin, setToken, fetchMyInteractions } from "../../data/posts.js";
 import { enqueue, syncNow } from "../../data/sync.js";
 import { clearCache } from "../../data/cache.js";
@@ -14,14 +14,14 @@ export function getUserData() {
 }
 
 function loadUserData(email) {
-  state.userData = storageGet(STORAGE_KEYS.userPrefix + email, {
+  state.userData = storageGet(userDataKey(email), {
     likes: [],
     read: [],
   });
 }
 
 export function restoreSession() {
-  const session = storageGet(STORAGE_KEYS.session, null);
+  const session = storageGet(sessionKey(), null);
   if (session && session.email) {
     state.user = session;
     if (session.token) setToken(session.token);
@@ -35,7 +35,7 @@ export async function login(email, password) {
   const user = await apiLogin(email, password);
   state.user = user;
   loadUserData(user.email);
-  storageSet(STORAGE_KEYS.session, user);
+  storageSet(sessionKey(), user);
   await restoreInteractions();
   return user;
 }
@@ -57,12 +57,12 @@ export async function restoreInteractions() {
   state.userData.read = Array.from(
     new Set([...state.userData.read, ...serverRead])
   );
-  storageSet(STORAGE_KEYS.userPrefix + state.user.email, state.userData);
+  storageSet(userDataKey(state.user.email), state.userData);
 }
 
 export function logout() {
   try {
-    localStorage.removeItem(STORAGE_KEYS.session);
+    localStorage.removeItem(sessionKey());
   } catch {
     /* armazenamento indisponível */
   }
@@ -81,7 +81,7 @@ export function toggleLikePersist(postId) {
   const nowLiked = likedIndex === -1;
   if (nowLiked) state.userData.likes.push(postId);
   else state.userData.likes.splice(likedIndex, 1);
-  storageSet(STORAGE_KEYS.userPrefix + state.user.email, state.userData);
+  storageSet(userDataKey(state.user.email), state.userData);
   enqueue(postId, { liked: nowLiked });
   syncNow();
   return nowLiked;
@@ -91,7 +91,7 @@ export function markReadPersist(postId) {
   const wasUnread = !state.userData.read.includes(postId);
   if (wasUnread) {
     state.userData.read.push(postId);
-    storageSet(STORAGE_KEYS.userPrefix + state.user.email, state.userData);
+    storageSet(userDataKey(state.user.email), state.userData);
     enqueue(postId, { read: true });
     syncNow();
     refreshBadge();
@@ -103,7 +103,7 @@ export function markUnreadPersist(postId) {
   const index = state.userData.read.indexOf(postId);
   if (index === -1) return false;
   state.userData.read.splice(index, 1);
-  storageSet(STORAGE_KEYS.userPrefix + state.user.email, state.userData);
+  storageSet(userDataKey(state.user.email), state.userData);
   enqueue(postId, { read: false });
   syncNow();
   refreshBadge();

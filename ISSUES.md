@@ -102,7 +102,7 @@ backend único roteado por header.
 | MT-22 | Backend: escopo por tenant em comunicados (posts) + IDs/UUID | [#22](https://github.com/OberdanBrito/interact/issues/22) ✅ Concluída |
 | MT-23 | Backend: escopo por tenant em grupos, interações e categorias | [#23](https://github.com/OberdanBrito/interact/issues/23) ✅ Concluída |
 | MT-24 | Backend: scheduler, tempo real (SSE) e migração/seed | [#24](https://github.com/OberdanBrito/interact/issues/24) ✅ Concluída |
-| MT-25 | Admin: sessão, headers e storage por tenant | [#25](https://github.com/OberdanBrito/interact/issues/25) |
+| MT-25 | Admin: sessão, headers e storage por tenant | [#25](https://github.com/OberdanBrito/interact/issues/25) ✅ Concluída |
 | MT-26 | PWA: `tenant.js`, storage/Dexie/API_BASE e manifest/SW por tenant | [#26](https://github.com/OberdanBrito/interact/issues/26) |
 
 **Ordem de ataque sugerida:** MT-19 → MT-20 → MT-21 → MT-22 → MT-23 → MT-24 (backend) → MT-25 (admin) → MT-26 (pwa).

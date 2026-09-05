@@ -93,3 +93,71 @@ porque o histórico dela mostra baixo engajamento com a categoria RH.
   backend (ver `ISSUES.md`). **A trava de sequenciamento foi removida** —
   esta ideia pode ser desenhada em cima do que a I-10 entregou. Ainda faltam
   as decisões em aberto acima antes de virar issue.
+
+---
+
+## #2 — Cadastro autosserviço de tenants (onboarding do cliente)
+
+**Status:** Em maturação. Não é issue.
+
+### O que já existe (fundação) e o que falta (governança)
+
+O board Multi-Tenant (#12) entregou o **isolamento** — modelo `Tenant`,
+`tenantId` em todos os dados, auth escopada. Não entregou **nenhuma forma de
+um tenant passar a existir** fora de rodar `npm run seed` manualmente no
+servidor. Não há tela, não há rota `POST /api/tenants`, não há conceito de
+"quem é dono da plataforma" (ver issue de segurança **#30**, aberta a partir
+desta mesma lacuna).
+
+### Decisão já fechada
+
+- **Modelo de negócio: autosserviço.** O cliente se cadastra sozinho — sem
+  intervenção manual do dono do produto para provisionar cada tenant.
+
+### Por que isso muda o tamanho do problema
+
+Autosserviço não é "adicionar uma tela de cadastro" — é abrir a porta da
+frente do sistema para desconhecidos, sem curadoria humana no meio. Isso
+levanta responsabilidades que o modelo "gerido por mim" não teria:
+
+- **Validação de identidade mínima** antes de ativar um tenant (e-mail do
+  primeiro admin precisa ser confirmado antes do tenant operar de verdade —
+  senão qualquer um cria um tenant com e-mail que não é dele).
+- **Anti-abuso** no endpoint público de cadastro (rate limiting, captcha ou
+  equivalente) — é a única rota do sistema que, por definição, precisa
+  aceitar tráfego não-autenticado de origem desconhecida.
+- **Disponibilidade de subdomínio em tempo real** — o cliente escolhe
+  `acme` e o sistema precisa checar unicidade contra `Tenant.subdomain` na
+  hora, com mensagem clara se já existe.
+- **Plano padrão e limites** — todo tenant nasce em algum plano (`free`,
+  hoje o único valor default do model). Sem cobrança implementada ainda,
+  precisa decidir se autosserviço = só plano gratuito por ora, ou se
+  cobrança é pré-requisito antes de abrir ao público.
+- **Visibilidade/gestão do dono da plataforma** — autosserviço sem um painel
+  de dono da plataforma (issue **#30**) significa tenants sendo criados sem
+  ninguém saber, poder suspender abuso, ou ver quantos existem. **Esta ideia
+  depende da #30 estar resolvida antes de ir ao ar — não antes de começar a
+  desenhar, mas antes de publicar de verdade.**
+
+### Decisões em aberto (o que falta fechar antes de virar issue)
+
+- [ ] **Confirmação de e-mail é obrigatória antes do tenant operar, ou o
+      cadastro já libera uso imediato?**
+- [ ] **Plano único (free) para todo cadastro autosserviço, ou cobrança
+      precisa existir primeiro?** (Hoje não há nenhuma integração de
+      pagamento no código.)
+- [ ] **Subdomínio é obrigatório no cadastro, ou pode ser definido depois?**
+      (Model já suporta subdomínio nulo — hoje possível operar sem ele.)
+- [ ] **O que acontece com um tenant abandonado no meio do cadastro** (e-mail
+      nunca confirmado)? Precisa de expiração/limpeza, ou fica órfão para
+      sempre?
+- [ ] **Rate limiting/anti-abuso** — mecanismo concreto ainda não escolhido.
+
+### Relação com outras issues/decisões
+
+- **Depende da #30** (papel de dono da plataforma) antes de ir ao ar — sem
+  isso, ninguém enxerga nem controla o que o autosserviço está criando.
+- Complementa diretamente a **#17/#27/#28** (provedor de e-mail por tenant):
+  um tenant recém-criado via autosserviço nasce sem provedor configurado —
+  o modo *dry-run* já previsto na #17 cobre esse intervalo até o cliente
+  configurar o próprio provedor.

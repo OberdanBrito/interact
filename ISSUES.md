@@ -105,8 +105,9 @@ backend único roteado por header.
 | MT-25 | Admin: sessão, headers e storage por tenant | [#25](https://github.com/OberdanBrito/interact/issues/25) ✅ Concluída |
 | MT-26 | PWA: `tenant.js`, storage/Dexie/API_BASE e manifest/SW por tenant | [#26](https://github.com/OberdanBrito/interact/issues/26) ✅ Concluída |
 | MT-27 | Backend: configuração do provedor de e-mail por tenant (storage + API + RBAC) | [#27](https://github.com/OberdanBrito/interact/issues/27) ✅ Concluída |
+| MT-28 | Admin: tela de gestão do provedor de e-mail por tenant | [#28](https://github.com/OberdanBrito/interact/issues/28) ✅ Concluída |
 
-**Ordem de ataque sugerida:** MT-19 → MT-20 → MT-21 → MT-22 → MT-23 → MT-24 (backend) → MT-25 (admin) → MT-26 (pwa) → MT-27 (backend) → MT-28 (admin).
+**Ordem de ataque sugerida:** MT-19 → MT-20 → MT-21 → MT-22 → MT-23 → MT-24 (backend) → MT-25 (admin) → MT-26 (pwa) → MT-27 (backend) → MT-28 (admin). ✅ Board Multi-Tenant 100% concluído.
 
 ---
 

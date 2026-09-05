@@ -61,6 +61,15 @@ export function postCardHTML(post, { liked, read }) {
   const author = escapeHTML(post.author?.name || "—");
   return `
     <li class="post-card" data-post-id="${post.id}">
+      ${post.coverImage
+        ? `<a class="post-cover js-open-post"
+             style="all:unset;display:block;cursor:pointer"
+             href="#/comunicados" data-post-id="${post.id}"
+             aria-label="Abrir comunicado: ${escapeHTML(post.title)}">
+             <img src="${escapeHTML(post.coverImage)}" alt="" loading="lazy"
+                  onerror="this.closest('.post-cover').style.display='none'">
+           </a>`
+        : ""}
       <div class="post-meta-row">
         <span class="unread-dot" ${read ? "hidden" : ""} aria-hidden="true"></span>
         <span class="badge" data-cat="${post.categoryId}">${getCategoryLabel(post.categoryId)}</span>

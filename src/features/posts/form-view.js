@@ -1,4 +1,4 @@
-import { CATEGORIES, getPost, createPost, updatePost, getInteractionAggregate, uploadAttachment, deleteAttachment } from "../../data/posts.js";
+import { CATEGORIES, getPost, createPost, updatePost, getInteractionAggregate, uploadAttachment, deleteAttachment, uploadCoverImage, deleteCoverImage } from "../../data/posts.js";
 import { listGroups, getRecipientCount } from "../../data/groups.js";
 import { state } from "../../core/state.js";
 import { $, escapeHTML } from "../../core/utils.js";
@@ -9,6 +9,14 @@ import { showToast } from "../../ui/toast.js";
 const MAX_ATTACHMENT_MB = 10;
 const ALLOWED_ATTACHMENT_TYPES = [
   "application/pdf",
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+];
+// Limites da imagem de capa (I-16): teto menor, só imagens, espelhando o backend.
+const MAX_COVER_MB = 5;
+const ALLOWED_COVER_TYPES = [
   "image/png",
   "image/jpeg",
   "image/gif",
@@ -276,6 +284,18 @@ export async function render(root, { id } = {}) {
       </div>
 
       <div class="field">
+        <label class="field-label" for="f-cover">Imagem de capa (opcional)</label>
+        <input class="input" id="f-cover" data-field="cover" type="file"
+               accept="${ALLOWED_COVER_TYPES.join(",")}"
+               aria-describedby="f-cover-hint ${errorId("cover")}">
+        <p class="field-hint" id="f-cover-hint">
+          Aparece no topo do card no app do colaborador. Envie PNG, JPEG, GIF ou WebP. Limite de ${MAX_COVER_MB} MB.
+        </p>
+        <p class="field-error" id="${errorId("cover")}" hidden></p>
+        <div id="cover-preview" data-cover-preview></div>
+      </div>
+
+      <div class="field">
         <label class="field-label" for="f-attachment">Anexos (opcional)</label>
         <input class="input" id="f-attachment" data-field="attachment" type="file"
                accept="${ALLOWED_ATTACHMENT_TYPES.join(",")}"
@@ -315,12 +335,61 @@ export async function render(root, { id } = {}) {
     urgent: root.querySelector("#f-urgent"),
     publishAt: root.querySelector("#f-publish-at"),
     expiresAt: root.querySelector("#f-expires-at"),
+    cover: root.querySelector("#f-cover"),
     attachment: root.querySelector("#f-attachment"),
   };
+  const coverPreview = root.querySelector("[data-cover-preview]");
   const attachmentContainer = root.querySelector("[data-attachment-container]");
   const currentAttachments = [...(values.attachments || [])];
   let pendingFile = null;
   let currentPostId = editing ? id : null;
+  // Imagem de capa (I-16): estado do form — URL existente, arquivo pendente e remoção.
+  let currentCover = values.coverImage || null;
+  let pendingCoverFile = null;
+  let coverRemoved = false;
+  let pendingObjectUrl = null;
+
+  renderCoverPreview();
+
+  function renderCoverPreview() {
+    if (pendingObjectUrl) {
+      URL.revokeObjectURL(pendingObjectUrl);
+      pendingObjectUrl = null;
+    }
+    if (pendingCoverFile) {
+      pendingObjectUrl = URL.createObjectURL(pendingCoverFile);
+      coverPreview.innerHTML = `
+        <div class="cover-preview">
+          <img src="${pendingObjectUrl}" alt="Nova capa">
+          <span class="cover-status">Nova capa (aguardando salvar)</span>
+          <button class="btn btn-ghost" type="button" data-cover-action="clear-pending">Cancelar seleção</button>
+        </div>`;
+      return;
+    }
+    if (coverRemoved || currentCover) {
+      coverPreview.innerHTML = `
+        <div class="cover-preview">
+          ${currentCover ? `<img src="${escapeHTML(currentCover)}" alt="Imagem de capa atual">` : ""}
+          <span class="cover-status">${coverRemoved ? "Capa removida — será apagada ao salvar." : "Capa atual do comunicado."}</span>
+          <button class="btn btn-ghost" type="button" data-cover-action="remove">
+            ${coverRemoved ? "Desfazer remoção" : "Remover capa"}
+          </button>
+        </div>`;
+      return;
+    }
+    coverPreview.innerHTML = "";
+  }
+
+  function isCoverAllowed(file) {
+    if (!file) return true;
+    if (file.size > MAX_COVER_MB * 1024 * 1024) {
+      return { ok: false, message: `Imagem muito grande. Limite máximo é ${MAX_COVER_MB} MB.` };
+    }
+    if (!ALLOWED_COVER_TYPES.includes(file.type)) {
+      return { ok: false, message: "Tipo de imagem não permitido. Envie PNG, JPEG, GIF ou WebP." };
+    }
+    return { ok: true };
+  }
 
   function renderAttachments() {
     attachmentContainer.innerHTML = attachmentListHTML(currentAttachments);
@@ -365,6 +434,41 @@ export async function render(root, { id } = {}) {
     if (idx >= 0) currentAttachments.splice(idx, 1);
     renderAttachments();
   }
+
+  input.cover.addEventListener("change", () => {
+    const file = input.cover.files?.[0] || null;
+    const res = isCoverAllowed(file);
+    if (!res.ok) {
+      showError(input.cover, res.message);
+      input.cover.value = "";
+      return;
+    }
+    clearErrors(root);
+    // Selecionar arquivo novo substitui a capa atual (remoção pendente é descartada).
+    if (file) {
+      pendingCoverFile = file;
+      coverRemoved = false;
+    } else {
+      pendingCoverFile = null;
+    }
+    renderCoverPreview();
+  });
+
+  coverPreview.addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-cover-action]");
+    if (!btn) return;
+    const action = btn.dataset.coverAction;
+    if (action === "remove") {
+      pendingCoverFile = null;
+      coverRemoved = !coverRemoved;
+      input.cover.value = "";
+      renderCoverPreview();
+    } else if (action === "clear-pending") {
+      pendingCoverFile = null;
+      input.cover.value = "";
+      renderCoverPreview();
+    }
+  });
 
   input.attachment.addEventListener("change", () => {
     const file = input.attachment.files?.[0] || null;
@@ -429,6 +533,17 @@ export async function render(root, { id } = {}) {
         }
         if (pendingFile && postId) {
           await uploadPendingFile(postId);
+        }
+        if (postId) {
+          // Imagem de capa (I-16): staged — JSON primeiro; capa só depois do post existir.
+          if (pendingCoverFile) {
+            await uploadCoverImage(postId, pendingCoverFile);
+            pendingCoverFile = null;
+            coverRemoved = false;
+          } else if (coverRemoved) {
+            await deleteCoverImage(postId);
+            coverRemoved = false;
+          }
         }
         showToast(
           kind === "draft"

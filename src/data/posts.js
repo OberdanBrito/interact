@@ -98,6 +98,23 @@ export async function deleteAttachment(postId, attachmentId) {
   return res.ok;
 }
 
+// Imagem de capa (I-16): upload/remoção dedicados — eixo separado dos anexos.
+export async function uploadCoverImage(postId, file) {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await apiPost(`/api/posts/${postId}/cover-image`, form);
+  const data = res.ok ? await res.json() : null;
+  if (!res.ok) {
+    throw new Error(data?.error || "Não foi possível enviar a imagem de capa.");
+  }
+  return data;
+}
+
+export async function deleteCoverImage(postId) {
+  const res = await apiDelete(`/api/posts/${postId}/cover-image`);
+  return res.ok;
+}
+
 export function getCategoryLabel(categoryId) {
   const cat = CATEGORIES.find((c) => c.id === categoryId);
   return cat ? cat.label : categoryId;

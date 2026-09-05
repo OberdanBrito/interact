@@ -488,6 +488,36 @@ button {
   color: var(--text-secondary);
 }
 
+/* Preview da imagem de capa (I-16) — imagem + status + ação de remoção. */
+.cover-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.cover-preview img {
+  width: 100%;
+  max-width: 320px;
+  height: 120px;
+  object-fit: cover;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius-sm, 8px);
+}
+
+.cover-status {
+  font-size: var(--fs-meta);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.cover-preview .btn {
+  min-height: 32px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
 .attachment-list {
   display: flex;
   flex-direction: column;

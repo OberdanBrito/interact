@@ -66,6 +66,12 @@ const comunicadoSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // Imagem de capa (I-16): filename do binário em disco (uploads/); opcional,
+    // default null (sem capa). Eixo separado de attachments (anexos p/ download).
+    coverImage: {
+      type: String,
+      default: null,
+    },
     // Anexos (I-03): metadados dos arquivos/imagens anexados; binário em disco (uploads/)
     attachments: {
       type: [

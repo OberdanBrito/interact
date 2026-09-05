@@ -10,7 +10,13 @@ import auth from "../middleware/auth.js";
 import requireAdmin from "../middleware/requireAdmin.js";
 import { schedulePublish, cancelPublish } from "../scheduler.js";
 import { emitSafe, EVENTS } from "../events.js";
-import upload, { UPLOAD_DIR, MAX_ATTACHMENT_MB } from "../upload.js";
+import upload, {
+  uploadCover,
+  UPLOAD_DIR,
+  MAX_ATTACHMENT_MB,
+  MAX_COVER_MB,
+  EXT_BY_MIME,
+} from "../upload.js";
 import { tenantScopeCondition, inTenantScope } from "../utils/tenant.js";
 
 const router = Router();
@@ -59,6 +65,7 @@ export async function toPost(doc) {
     expiresAt: doc.expiresAt ? new Date(doc.expiresAt).toISOString() : null,
     expired:
       doc.expiresAt != null && new Date(doc.expiresAt).getTime() < Date.now(),
+    coverImage: doc.coverImage ? `/api/posts/${doc._id}/cover-image` : null,
     attachments: doc.attachments ?? [],
   };
 }
@@ -178,6 +185,15 @@ function isPostEligible(doc, user) {
 function attachmentFilePath(attachmentId) {
   return path.resolve(UPLOAD_DIR, attachmentId);
 }
+
+function coverFilePath(coverImage) {
+  return path.resolve(UPLOAD_DIR, coverImage);
+}
+
+// MIME derivado da extensão do filename da capa (servido no GET, I-16).
+const MIME_BY_EXT = Object.fromEntries(
+  Object.entries(EXT_BY_MIME).map(([mime, ext]) => [ext, mime])
+);
 
 // GET /api/posts — lista comunicados. Query params: ?category, ?search, ?groupId, ?archive,
 // ?limit, ?cursor (paginação por cursor; envelope `{ items, nextCursor, hasMore }`).
@@ -684,6 +700,14 @@ router.delete("/:id", requireAdmin, async (req, res) => {
         /* arquivo já ausente do disco — ignorar */
       }
     }
+    // Imagem de capa (I-16): remove o binário junto com os anexos.
+    if (doc.coverImage) {
+      try {
+        await unlink(coverFilePath(doc.coverImage));
+      } catch {
+        /* arquivo já ausente do disco — ignorar */
+      }
+    }
 
     await doc.deleteOne();
     res.status(204).end();
@@ -810,6 +834,115 @@ router.delete("/:id/attachments/:attachmentId", requireAdmin, async (req, res) =
     res.status(200).json({ ok: true });
   } catch (err) {
     console.error("Erro ao remover anexo:", err.message);
+    res.status(500).json({ error: "Erro interno no servidor" });
+  }
+});
+
+// POST /api/posts/:id/cover-image — define/substitui a imagem de capa (somente admin, I-16)
+router.post("/:id/cover-image", requireAdmin, (req, res) => {
+  uploadCover.single("file")(req, res, async (err) => {
+    if (err) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res
+          .status(400)
+          .json({ error: `Imagem muito grande. Limite máximo é ${MAX_COVER_MB} MB.` });
+      }
+      if (err.code === "UNSUPPORTED_TYPE") {
+        return res
+          .status(400)
+          .json({ error: "Tipo de imagem não permitido. Envie PNG, JPEG, GIF ou WebP." });
+      }
+      console.error("Erro de upload de capa:", err.message);
+      return res.status(500).json({ error: "Erro interno no servidor" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: "Nenhum arquivo enviado" });
+    }
+
+    try {
+      const doc = await Comunicado.findById(req.params.id);
+      if (!doc || !inTenantScope(doc, req.tenantId)) {
+        try {
+          await unlink(req.file.path);
+        } catch {
+          /* melhor esforço */
+        }
+        return res.status(404).json({ error: "Comunicado não encontrado" });
+      }
+
+      // Substitui a capa anterior: remove o binário antigo antes de gravar o novo.
+      if (doc.coverImage) {
+        try {
+          await unlink(coverFilePath(doc.coverImage));
+        } catch {
+          /* arquivo já ausente do disco — ignorar */
+        }
+      }
+
+      doc.coverImage = req.file.filename;
+      await doc.save();
+
+      res.status(201).json({ coverImage: `/api/posts/${doc._id}/cover-image` });
+    } catch (e) {
+      console.error("Erro ao salvar capa:", e.message);
+      res.status(500).json({ error: "Erro interno no servidor" });
+    }
+  });
+});
+
+// GET /api/posts/:id/cover-image — serve o binário da capa (I-16)
+// Respeita a MESMA visibilidade do comunicado: não-elegível → 404 (não revela existência).
+router.get("/:id/cover-image", async (req, res) => {
+  try {
+    const doc = await Comunicado.findById(req.params.id).lean();
+
+    if (!doc) {
+      return res.status(404).json({ error: "Comunicado não encontrado" });
+    }
+    if (!isPostEligible(doc, req.user)) {
+      return res.status(404).json({ error: "Comunicado não encontrado" });
+    }
+    if (!doc.coverImage) {
+      return res.status(404).json({ error: "Imagem de capa não encontrada" });
+    }
+
+    const mime = MIME_BY_EXT[path.extname(doc.coverImage).toLowerCase()] || "application/octet-stream";
+    res.setHeader("Content-Type", mime);
+    res.setHeader("Content-Disposition", "inline");
+    res.sendFile(coverFilePath(doc.coverImage), (sendErr) => {
+      if (sendErr && !res.headersSent) {
+        res.status(404).json({ error: "Imagem de capa não encontrada" });
+      }
+    });
+  } catch (err) {
+    console.error("Erro ao servir capa:", err.message);
+    res.status(500).json({ error: "Erro interno no servidor" });
+  }
+});
+
+// DELETE /api/posts/:id/cover-image — remove a imagem de capa (somente admin, I-16)
+router.delete("/:id/cover-image", requireAdmin, async (req, res) => {
+  try {
+    const doc = await Comunicado.findById(req.params.id);
+
+    if (!doc || !inTenantScope(doc, req.tenantId)) {
+      return res.status(404).json({ error: "Comunicado não encontrado" });
+    }
+
+    if (doc.coverImage) {
+      try {
+        await unlink(coverFilePath(doc.coverImage));
+      } catch {
+        /* arquivo já ausente do disco — ignorar */
+      }
+      doc.coverImage = null;
+      await doc.save();
+    }
+
+    res.status(200).json({ coverImage: null });
+  } catch (err) {
+    console.error("Erro ao remover capa:", err.message);
     res.status(500).json({ error: "Erro interno no servidor" });
   }
 });

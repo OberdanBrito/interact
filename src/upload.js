@@ -13,6 +13,9 @@ export const UPLOAD_DIR = path.resolve(__dirname, "..", "uploads");
 export const MAX_ATTACHMENT_MB =
   Number.parseInt(process.env.MAX_ATTACHMENT_MB, 10) || 10;
 
+// Limite da imagem de capa (I-16): teto próprio, menor que o de anexos.
+export const MAX_COVER_MB = Number.parseInt(process.env.MAX_COVER_MB, 10) || 5;
+
 const DEFAULT_ATTACHMENT_TYPES = [
   "application/pdf",
   "image/png",
@@ -30,8 +33,13 @@ export const ALLOWED_ATTACHMENT_TYPES = new Set(
   envTypes.length > 0 ? envTypes : DEFAULT_ATTACHMENT_TYPES
 );
 
+// Tipos permitidos para a capa (I-16): somente imagens (png/jpeg/gif/webp).
+const DEFAULT_COVER_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+
+export const ALLOWED_COVER_TYPES = new Set(DEFAULT_COVER_TYPES);
+
 // Extensões aceitas por MIME, usadas para montar um nome de arquivo seguro.
-const EXT_BY_MIME = {
+export const EXT_BY_MIME = {
   "application/pdf": ".pdf",
   "image/png": ".png",
   "image/jpeg": ".jpg",
@@ -65,4 +73,23 @@ const upload = multer({
   fileFilter,
 });
 
+// Valida tipo de capa (imagens apenas) antes de gravar.
+function coverFileFilter(req, file, cb) {
+  if (ALLOWED_COVER_TYPES.has(file.mimetype)) {
+    cb(null, true);
+  } else {
+    const err = new Error("Tipo de arquivo não permitido");
+    err.code = "UNSUPPORTED_TYPE";
+    cb(err);
+  }
+}
+
+// Instância para a imagem de capa (I-16): mesmo storage UPLOAD_DIR, limite menor.
+const uploadCover = multer({
+  storage,
+  limits: { fileSize: MAX_COVER_MB * 1024 * 1024 },
+  fileFilter: coverFileFilter,
+});
+
 export default upload;
+export { uploadCover };

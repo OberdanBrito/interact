@@ -88,8 +88,8 @@ porque o histórico dela mostra baixo engajamento com a categoria RH.
 
 ### Relação com outras issues/decisões
 
-- Reaproveita a arquitetura de ordenação que a **I-10 (Paginação)** já vai
-  mexer — se I-10 mover a lógica de ordenação para o backend (decisão já
-  tomada nela), esta ideia deveria ser desenhada em cima dessa mesma
-  mudança, não antes dela. **Não iniciar esta ideia antes da I-10 estar
-  concluída.**
+- Reaproveita a arquitetura de ordenação que a **I-10 (Paginação)** mexeu —
+  a I-10 já concluiu e moveu a ordenação por fixado/urgente/não-lido para o
+  backend (ver `ISSUES.md`). **A trava de sequenciamento foi removida** —
+  esta ideia pode ser desenhada em cima do que a I-10 entregou. Ainda faltam
+  as decisões em aberto acima antes de virar issue.

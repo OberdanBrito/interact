@@ -11,6 +11,7 @@ import * as groupFormView from "../features/groups/form-view.js";
 import * as analyticsListView from "../features/analytics/list-view.js";
 import * as analyticsDetailView from "../features/analytics/detail-view.js";
 import * as dashboardView from "../features/analytics/dashboard-view.js";
+import * as emailProviderView from "../features/settings/email-provider-view.js";
 
 function parseRoute() {
   const parts = location.hash.replace(/^#/, "").split("/").filter(Boolean);
@@ -30,6 +31,8 @@ function parseRoute() {
   if (parts[0] === "analytics" && parts.length === 2)
     return { name: "analytics-detail", id: parts[1] };
   if (parts[0] === "dashboard" && parts.length === 1) return { name: "dashboard" };
+  if (parts[0] === "settings" && parts[1] === "email-provider" && parts.length === 2)
+    return { name: "email-provider" };
   return { name: "not-found" };
 }
 
@@ -82,6 +85,11 @@ const AUTH_ROUTES = {
     active: "dashboard",
     render: (view) => dashboardView.render(view),
   },
+  "email-provider": {
+    title: "Provedor de e-mail",
+    active: "settings",
+    render: (view) => emailProviderView.render(view),
+  },
 };
 
 function renderRoute() {
@@ -112,6 +120,13 @@ function renderRoute() {
   }
 
   const config = AUTH_ROUTES[route.name];
+
+  // A tela de gestão do provedor de e-mail é restrita a admin (MT-28).
+  if (route.name === "email-provider" && state.user?.role !== "admin") {
+    location.replace("#/posts");
+    return;
+  }
+
   document.title = `${config.title} — Interact Admin`;
   app.innerHTML = shellHTML({
     user: state.user,

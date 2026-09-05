@@ -39,6 +39,12 @@ export function shellHTML({ user, sectionTitle, active }) {
             ${icon("i-chart")}
             <span>Dashboard</span>
           </a>
+          ${user.role === "admin" ? `
+          <a class="nav-item ${active === "settings" ? "is-active" : ""}" href="#/settings/email-provider"
+             ${active === "settings" ? 'aria-current="page"' : ""}>
+            ${icon("i-inbox")}
+            <span>Provedor de e-mail</span>
+          </a>` : ""}
         </nav>
         <div class="sidebar-cta">
           <a class="btn btn-primary btn-block" href="#/posts/nova">

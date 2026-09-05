@@ -1,4 +1,4 @@
-import { maskSecret } from "../crypto.js";
+import { maskSecret, decryptSecret } from "../crypto.js";
 
 export const EMAIL_PROVIDER_TYPES = ["smtp", "api"];
 
@@ -34,6 +34,29 @@ export function normalizeEmailProvider(input = {}) {
       fromName: input.fromName.trim(),
     },
   };
+}
+
+/**
+ * Monta a config efetiva do provedor a partir do body da requisição + config salva.
+ * Regra do segredo (write-only): usa `body.secret` se informado; senão decifra
+ * `savedProvider.secretEncrypted`. Devolve o segredo em CLARO (para envio) — nunca
+ * deve ser logado ou persistido por quem usa este helper sem cifrar.
+ * @param {object} body payload da requisição (type/host/port/secure/authUser/fromAddress/fromName/secret)
+ * @param {object|null} savedProvider config salva (Tenant.settings.emailProvider)
+ * @returns {{ value: object, plainSecret: string|null } | { error: string }}
+ */
+export function resolveProviderConfig(body = {}, savedProvider = null) {
+  const { value, error } = normalizeEmailProvider(body);
+  if (error) return { error };
+
+  const secret = typeof body.secret === "string" ? body.secret.trim() : "";
+  let plainSecret = null;
+  if (secret) {
+    plainSecret = secret;
+  } else if (savedProvider?.secretEncrypted) {
+    plainSecret = decryptSecret(savedProvider.secretEncrypted);
+  }
+  return { value, plainSecret };
 }
 
 /**

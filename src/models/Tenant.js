@@ -22,6 +22,12 @@ const tenantSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    // settings é Mixed (MT-27): armazena a configuração do provedor de e-mail por tenant.
+    // Subestrutura esperada de settings.emailProvider:
+    //   { type: 'smtp'|'api', host, port, secure, authUser, secretEncrypted,
+    //     fromAddress, fromName, updatedBy, updatedAt }
+    // 'secretEncrypted' guarda o segredo cifrado ("iv:tag:data" hex via src/crypto.js);
+    // nunca é exposto em texto claro nas respostas.
     settings: {
       type: mongoose.Schema.Types.Mixed,
       default: {},

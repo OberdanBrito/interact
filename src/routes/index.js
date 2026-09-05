@@ -6,6 +6,7 @@ import groupsRouter from "./groups.js";
 import interactionsRouter from "./interactions.js";
 import eventsRouter from "./events.js";
 import tenantsRouter from "./tenants.js";
+import tenantSettingsRouter from "./tenant-settings.js";
 
 const router = Router();
 
@@ -16,5 +17,6 @@ router.use("/groups", groupsRouter);
 router.use("/interactions", interactionsRouter);
 router.use("/events", eventsRouter);
 router.use("/tenants", tenantsRouter);
+router.use("/tenant", tenantSettingsRouter);
 
 export default router;

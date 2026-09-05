@@ -10,7 +10,7 @@
     "seed": "node src/db/seed.js",
     "db:migrate": "node scripts/migrate-mt24.mjs",
     "db:reset": "docker compose down -v && docker compose up -d && sleep 5 && npm run seed",
-    "test:integration": "node scripts/qa-i11.mjs && node scripts/qa-i12.mjs && node scripts/qa-i04.mjs && node scripts/qa-i05.mjs && node scripts/qa-i03.mjs && node scripts/qa-i07.mjs && node scripts/qa-i10.mjs && node scripts/qa-i21.mjs && node scripts/qa-mt22.mjs && node scripts/qa-mt23.mjs && node scripts/qa-mt24.mjs",
+    "test:integration": "node scripts/qa-i11.mjs && node scripts/qa-i12.mjs && node scripts/qa-i04.mjs && node scripts/qa-i05.mjs && node scripts/qa-i03.mjs && node scripts/qa-i07.mjs && node scripts/qa-i10.mjs && node scripts/qa-i21.mjs && node scripts/qa-mt22.mjs && node scripts/qa-mt23.mjs && node scripts/qa-mt24.mjs && node scripts/qa-mt27.mjs",
     "qa:i12": "node scripts/qa-i12.mjs",
     "qa:i04": "node scripts/qa-i04.mjs",
     "qa:i05": "node scripts/qa-i05.mjs",
@@ -18,7 +18,8 @@
     "qa:i07": "node scripts/qa-i07.mjs",
     "qa:i10": "node scripts/qa-i10.mjs",
     "qa:mt23": "node scripts/qa-mt23.mjs",
-    "qa:mt24": "node scripts/qa-mt24.mjs"
+    "qa:mt24": "node scripts/qa-mt24.mjs",
+    "qa:mt27": "node scripts/qa-mt27.mjs"
   },
   "license": "UNLICENSED",
   "dependencies": {

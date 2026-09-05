@@ -49,7 +49,7 @@ mantém o contexto completo (descrição, componentes, critérios de aceite).
 | I-13 Dashboard global de métricas | [#10](https://github.com/OberdanBrito/interact/issues/10) |
 | I-14 Recibo de leitura em tempo real | [#13](https://github.com/OberdanBrito/interact/issues/13) |
 | I-15 Cobrança de leitura | [#15](https://github.com/OberdanBrito/interact/issues/15) |
-| Multi-Tenant — fundação (SaaS) | [#18](https://github.com/OberdanBrito/interact/issues/18) |
+| Multi-Tenant — fundação (SaaS) | [#18](https://github.com/OberdanBrito/interact/issues/18) ✅ Concluída |
 
 Labels usadas: `prioridade: alta|media|baixa`, `area: publicacao|entrega|leitura|metricas`, `adiado`.
 
@@ -62,7 +62,7 @@ fila funcional deste documento.
 | Issue | GitHub | Projeto |
 |---|---|---|
 | Deploy de produção (CI/CD, PM2/Docker/systemd, secrets, HTTPS, backup) | [#16](https://github.com/OberdanBrito/interact/issues/16) | Infra (#10) |
-| Provedor de e-mail por cliente/tenant (BYO provider; depende da multi-tenant #18; consumido pela I-08) | [#17](https://github.com/OberdanBrito/interact/issues/17) | Infra (#10) |
+| Provedor de e-mail por cliente/tenant (SMTP genérico via nodemailer; consumido pela I-08) | [#17](https://github.com/OberdanBrito/interact/issues/17) ✅ Concluída | Infra (#10) |
 
 ---
 

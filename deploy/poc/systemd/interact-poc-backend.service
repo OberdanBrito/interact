@@ -1,0 +1,19 @@
+# Interact POC — backend (API REST + scheduler + SSE + tenant)
+# Instalada via deploy/poc/deploy.sh install (fonte de verdade versionada).
+# Lê as variáveis de ambiente de deploy/poc/.env.poc (gitignored, segredos no host).
+[Unit]
+Description=Interact POC backend (API + scheduler + SSE + tenant)
+After=network-online.target docker.service
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=/home/oberdan/WebstormProjects/interact/backend
+EnvironmentFile=/home/oberdan/WebstormProjects/interact/deploy/poc/.env.poc
+ExecStart=/usr/local/bin/node src/server.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

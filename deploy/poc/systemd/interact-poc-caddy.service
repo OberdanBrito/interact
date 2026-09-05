@@ -1,0 +1,18 @@
+# Interact POC — caddy (reverse proxy local :3005)
+# Instalada via deploy/poc/deploy.sh install (fonte de verdade versionada).
+# Serve admin (/admin), API (/api), /health, /uploads e PWA (/) apontando
+# para o Caddyfile da POC. TLS é terminado pelo Tailscale na camada de rede.
+[Unit]
+Description=Interact POC caddy (reverse proxy :3005)
+After=network-online.target interact-poc-backend.service
+Wants=interact-poc-backend.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/caddy run --config /home/oberdan/WebstormProjects/interact/deploy/poc/Caddyfile
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

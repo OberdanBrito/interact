@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Demo POC "homeless" — monta/encerra a demo do Interact via Tailscale.
-# Uso: ./deploy.sh [up|down|status]
+# Uso: ./deploy.sh [up|down|status|install|uninstall]
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -12,6 +12,9 @@ ADMIN="$ROOT/frontend_admin"
 
 POC_HOST="${POC_HOST:-obj.taild259e7.ts.net:8444}"
 POC_SERVE_PORT="${POC_SERVE_PORT:-8444}"
+
+SYSTEMD_DIR="$POC/systemd"
+UNITS=("interact-poc-backend.service" "interact-poc-caddy.service")
 
 require_env() {
   if [[ ! -f "$ENV_FILE" ]]; then
@@ -28,6 +31,15 @@ require_env() {
   fi
 }
 
+units_enabled() {
+  for u in "${UNITS[@]}"; do
+    if ! systemctl is-enabled --quiet "$u" 2>/dev/null; then
+      return 1
+    fi
+  done
+  return 0
+}
+
 up() {
   require_env
 
@@ -41,7 +53,9 @@ up() {
   (cd "$BACKEND" && MONGODB_URI="$MONGODB_URI" node src/db/seed.js)
 
   echo "[4/6] Backend POC na porta $PORT..."
-  if ss -ltn | grep -q ":$PORT "; then
+  if units_enabled; then
+    echo "  units systemd habilitadas — backend é serviço do sistema; skip nohup."
+  elif ss -ltn | grep -q ":$PORT "; then
     echo "  porta $PORT já em uso; assumindo backend já no ar."
   else
     (cd "$BACKEND" && setsid nohup env "PORT=$PORT" "MONGODB_URI=$MONGODB_URI" \
@@ -52,7 +66,9 @@ up() {
   fi
 
   echo "[5/6] Caddy (reverse proxy local :3005)..."
-  if ! ss -ltn | grep -q ":3005 "; then
+  if units_enabled; then
+    echo "  units systemd habilitadas — caddy é serviço do sistema; skip nohup."
+  elif ! ss -ltn | grep -q ":3005 "; then
     setsid nohup caddy run --config "$POC/Caddyfile" >> /tmp/interact-poc-caddy.log 2>&1 < /dev/null & disown
     echo "  caddy subindo (log: /tmp/interact-poc-caddy.log)"
   else
@@ -78,9 +94,54 @@ down() {
   echo "  para encerrar: pkill -f '[p]oc/Caddyfile'; pkill -f 'PORT=3003' (ajuste se preciso)"
 }
 
+install() {
+  require_env
+  echo "Instalando units systemd da POC ($SYSTEMD_DIR → /etc/systemd/system/)..."
+
+  for u in "${UNITS[@]}"; do
+    [[ -f "$SYSTEMD_DIR/$u" ]] || { echo "Faltando $SYSTEMD_DIR/$u (fonte de verdade não versionada?)." >&2; exit 1; }
+  done
+
+  echo "== portas :3003/:3005 =="
+  if ss -ltn | grep -Eq ':3003 |:3005 '; then
+    echo "  ⚠ Atenção: há listener em :3003/:3005 fora do systemd."
+    echo "    Se for instância manual (nohup) da POC, pare-a antes de habilitar:"
+    echo "      pkill -f server.js ; pkill -f '[p]oc/Caddyfile'"
+    echo "    O enable abaixo pode falhar no bind se a porta já estiver ocupada."
+  else
+    echo "  portas livres. OK."
+  fi
+
+  sudo systemctl is-enabled --quiet docker 2>/dev/null && echo "  docker habilitado no boot. OK." || echo "  ⚠ docker não está habilitado — Mongo não subirá no boot!"
+  sudo systemctl is-enabled --quiet tailscaled 2>/dev/null && echo "  tailscaled habilitado no boot. OK." || echo "  ⚠ tailscaled não habilitado — serve tailnet não voltará no boot!"
+
+  sudo cp "$SYSTEMD_DIR"/interact-poc-*.service /etc/systemd/system/
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now "${UNITS[@]}"
+
+  echo "Units habilitadas e iniciadas:"
+  systemctl is-active -- "${UNITS[@]}" || true
+  echo "Auto-start no boot configurado. Teste o reboot (ou: systemctl restart ${UNITS[0]} ${UNITS[1]})."
+}
+
+uninstall() {
+  echo "Desabilitando e removendo units systemd da POC..."
+  for u in "${UNITS[@]}"; do
+    if [[ -f "/etc/systemd/system/$u" ]]; then
+      sudo systemctl disable --now "$u" || true
+      sudo rm -f "/etc/systemd/system/$u"
+    fi
+  done
+  sudo systemctl daemon-reload
+  echo "Units removidas; modo manual (./deploy.sh up) volta a valer."
+}
+
 status() {
   echo "== tailscale serve =="
   tailscale serve status
+  echo "== units systemd POC =="
+  systemctl is-enabled "${UNITS[@]}" 2>/dev/null || true
+  systemctl is-active "${UNITS[@]}" 2>/dev/null || true
   echo "== listeners =="
   ss -ltn | grep -E ':3003 |:3005 ' || true
   echo "== health =="
@@ -92,5 +153,7 @@ case "${1:-up}" in
   up) up ;;
   down) down ;;
   status) status ;;
-  *) echo "uso: $0 [up|down|status]"; exit 1 ;;
+  install) install ;;
+  uninstall) uninstall ;;
+  *) echo "uso: $0 [up|down|status|install|uninstall]"; exit 1 ;;
 esac

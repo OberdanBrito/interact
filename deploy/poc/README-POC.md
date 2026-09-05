@@ -65,6 +65,44 @@ curl -sS https://obj.taild259e7.ts.net:8444/health
 Pré-requisitos: `caddy` no PATH (host binary), `tailscale` logado, Mongo do
 backend (`backend-mongo-1`) no ar — os mesmos já usados no desenvolvimento.
 
+## Auto-start no boot (systemd)
+
+A demo sobe sozinha quando o SO reinicia, sem ação do usuário. Três mecanismos:
+
+1. **Mongo** — `restart: unless-stopped` no `backend/docker-compose.yml`: o
+   container respawna junto do daemon do Docker (habilitado no boot).
+2. **Backend + Caddy** — units versionadas em `deploy/poc/systemd/`:
+   `interact-poc-backend.service` (:3003, lê `.env.poc` via `EnvironmentFile`,
+   `Restart=on-failure`) e `interact-poc-caddy.service` (:3005, atrás do backend).
+3. **Serve tailnet** — o `tailscale serve` da porta 8444 persiste no estado do
+   `tailscaled` (já habilitado): volta sozinho ao boot, sem unit própria.
+
+Instalar (uma vez):
+
+```bash
+sudo ./deploy.sh install   # copia units → /etc/systemd/system/, enable --now
+```
+
+Ordem no boot: `network → docker → mongo → backend → caddy`. Se o backend subir
+antes do Mongo ficar pronto, o systemd reinicia (`Restart=on-failure`) até
+estabilizar. Verificar:
+
+```bash
+./deploy.sh status            # units + listeners + health via URL tailnet
+journalctl -u interact-poc-backend -f   # diagnóstico do backend
+systemctl restart interact-poc-backend interact-poc-caddy
+```
+
+Remover (volta ao modo manual `./deploy.sh up`):
+
+```bash
+sudo ./deploy.sh uninstall
+```
+
+**Unidades versionadas, host reprodutível:** edite as units em
+`deploy/poc/systemd/` (fonte de verdade) e rode `install` de novo — nunca edite
+diretamente em `/etc/systemd/system/`.
+
 ## Dados da demo
 
 Seed padrão (usuários de QA):

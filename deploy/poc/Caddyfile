@@ -1,0 +1,42 @@
+# POC demo "homeless" — Caddy como reverse proxy local (porta 3005)
+# HTTP puro: o TLS é terminado pelo Tailscale (cert ts.net) na camada de rede.
+{
+	auto_https off
+	admin off
+}
+
+:3005 {
+	encode zstd gzip
+
+	# Admin — sob /admin (dist do frontend_admin, base /admin/)
+	handle /admin/* {
+		root * /home/oberdan/WebstormProjects/interact/frontend_admin/dist
+		uri strip_prefix /admin
+		try_files {path} /index.html
+		file_server
+	}
+
+	# API (inclui SSE /api/events) → backend POC :3003
+	handle /api/* {
+		reverse_proxy localhost:3003 {
+			flush_interval -1
+		}
+	}
+
+	# Health fora de /api (backend /health é rota sem /api)
+	handle /health {
+		reverse_proxy localhost:3003
+	}
+
+	# Anexos (I-03) → backend POC :3003
+	handle /uploads/* {
+		reverse_proxy localhost:3003
+	}
+
+	# PWA — raiz "/" (manifest/SW têm scope "/" hardcoded)
+	handle {
+		root * /home/oberdan/WebstormProjects/interact/frontend_pwa/dist
+		try_files {path} /index.html
+		file_server
+	}
+}

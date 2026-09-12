@@ -19,11 +19,11 @@ implementar e como verificar. Atualize o status ao iniciar/concluir cada item.
 | Prioridade | Aberto | Em andamento | Concluído | Adiado | Fora de escopo |
 |---|---|---|---|---|---|
 | Alta | 1 | 0 | 1 | 0 | 0 |
-| Média | 4 | 0 | 2 | 0 | 0 |
+| Média | 5 | 0 | 2 | 0 | 0 |
 | Baixa | 3 | 0 | 3 | 0 | 0 |
 | — | 0 | 0 | 0 | 1 | 3 |
 
-**Total: 19 issues** (2 Alta — 1 aberta, 1 concluída —, 6 Média — 4 abertas, 2 concluídas —, 6 Baixa — 3 abertas, 3 concluídas —, 1 Ab. sem prioridade (multi-tenant #18), 1 Adiada, 3 Fora de escopo)
+**Total: 20 issues** (2 Alta — 1 aberta, 1 concluída —, 7 Média — 5 abertas, 2 concluídas —, 6 Baixa — 3 abertas, 3 concluídas —, 1 Ab. sem prioridade (multi-tenant #18), 1 Adiada, 3 Fora de escopo)
 
 ## Vínculo com GitHub
 
@@ -49,7 +49,8 @@ mantém o contexto completo (descrição, componentes, critérios de aceite).
 | I-13 Dashboard global de métricas | [#10](https://github.com/OberdanBrito/interact/issues/10) |
 | I-14 Recibo de leitura em tempo real | [#13](https://github.com/OberdanBrito/interact/issues/13) |
 | I-15 Cobrança de leitura | [#15](https://github.com/OberdanBrito/interact/issues/15) |
-| Multi-Tenant — fundação (SaaS) | [#18](https://github.com/OberdanBrito/interact/issues/18) |
+| I-16 Imagem de destaque nos cards do feed | [#29](https://github.com/OberdanBrito/interact/issues/29) |
+| Multi-Tenant — fundação (SaaS) | [#18](https://github.com/OberdanBrito/interact/issues/18) ✅ Concluída |
 
 Labels usadas: `prioridade: alta|media|baixa`, `area: publicacao|entrega|leitura|metricas`, `adiado`.
 
@@ -62,7 +63,7 @@ fila funcional deste documento.
 | Issue | GitHub | Projeto |
 |---|---|---|
 | Deploy de produção (CI/CD, PM2/Docker/systemd, secrets, HTTPS, backup) | [#16](https://github.com/OberdanBrito/interact/issues/16) | Infra (#10) |
-| Provedor de e-mail por cliente/tenant (BYO provider; depende da multi-tenant #18; consumido pela I-08) | [#17](https://github.com/OberdanBrito/interact/issues/17) | Infra (#10) |
+| Provedor de e-mail por cliente/tenant (SMTP genérico via nodemailer; consumido pela I-08) | [#17](https://github.com/OberdanBrito/interact/issues/17) ✅ Concluída | Infra (#10) |
 
 ---
 
@@ -289,6 +290,20 @@ backend único roteado por header.
   - [x] Filtro/aba de arquivo lista comunicados antigos sem poluir o feed principal
   - [x] Busca e visibilidade funcionam dentro do arquivo
   - [x] Sem impacto na ordenação inteligente do feed ativo
+
+### I-16 — Imagem de destaque nos cards do feed
+- **Descrição:** o feed do PWA hoje exibe cards 100% textuais. Adiciona uma imagem de destaque (capa) por comunicado — upload separado no formulário do admin (não reaproveita anexos da I-03) — exibida como thumbnail de altura fixa no card e no bottom sheet.
+- **Componentes:** `backend` (model Comunicado + rotas `/api/posts/:id/cover-image`), `frontend_admin` (form-view), `frontend_pwa` (feed/templates)
+- **Prioridade:** Média
+- **Esforço:** M (2-3 dias)
+- **Status:** Aberto
+- **Decisão:** capa é eixo separado de `attachments` (download permanece intocado); staged como os anexos (post criado/atualizado via JSON, upload depois); binário servido com a mesma visibilidade do comunicado (`isPostEligible`) e escopo por tenant; `DELETE /api/posts/:id` remove o binário da capa junto com os anexos.
+- **Critérios de aceite:**
+  - [ ] `POST /api/posts/:id/cover-image` valida tipo/tamanho (`MAX_COVER_MB` 5, png/jpeg/gif/webp) e substitui capa anterior
+  - [ ] `GET .../cover-image` respeita `isPostEligible` (404 não-elegível/sem capa)
+  - [ ] Comunicado sem capa → `coverImage: null`; card sem capa mantém layout atual (sem espaço reservado)
+  - [ ] Editar comunicado sem tocar na capa preserva a capa existente
+  - [ ] Card do feed exibe capa como thumbnail (`object-fit: cover`, lazy) no topo; sheet exibe acima do título
 
 ---
 

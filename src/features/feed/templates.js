@@ -1,5 +1,5 @@
 import { escapeHTML, relativeDate, initialsOf } from "../../core/utils.js";
-import { getCategoryLabel } from "../../data/posts.js";
+import { getCategoryLabel, getCoverImageUrl } from "../../data/posts.js";
 
 function formatFileSize(bytes) {
   const n = Number(bytes) || 0;
@@ -63,10 +63,10 @@ export function postCardHTML(post, { liked, read }) {
     <li class="post-card" data-post-id="${post.id}">
       ${post.coverImage
         ? `<a class="post-cover js-open-post"
-             style="all:unset;display:block;cursor:pointer"
+             style="display:block;cursor:pointer"
              href="#/comunicados" data-post-id="${post.id}"
              aria-label="Abrir comunicado: ${escapeHTML(post.title)}">
-             <img src="${escapeHTML(post.coverImage)}" alt="" loading="lazy"
+             <img src="${escapeHTML(getCoverImageUrl(post.id))}" alt="" loading="lazy"
                   onerror="this.closest('.post-cover').style.display='none'">
            </a>`
         : ""}

@@ -274,3 +274,10 @@ export async function fetchMyInteractions() {
 export function getAttachmentUrl(postId, attachmentId) {
   return `${getApiBase()}/api/posts/${postId}/attachments/${attachmentId}`;
 }
+
+// URL absoluta da capa para <img> (I-16): o browser não envia header
+// Authorization em tags <img>, então o token vai via ?token= (mesmo padrão
+// do SSE, I-07). Em produção same-origin a base é window.location.origin.
+export function getCoverImageUrl(postId) {
+  return `${getApiBase()}/api/posts/${postId}/cover-image?token=${encodeURIComponent(TOKEN || "")}`;
+}

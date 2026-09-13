@@ -576,6 +576,8 @@ h1, h2, p { margin: 0; }
   height: 160px;
   overflow: hidden;
   border-radius: var(--radius-md) var(--radius-md) 0 0;
+  text-decoration: none;
+  color: inherit;
 }
 .post-cover img {
   width: 100%;

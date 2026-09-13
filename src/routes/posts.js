@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import crypto from "node:crypto";
 import { Router } from "express";
+import jwt from "jsonwebtoken";
 import { unlink } from "node:fs/promises";
 import path from "node:path";
 import Comunicado from "../models/Comunicado.js";
@@ -20,6 +21,25 @@ import upload, {
 import { tenantScopeCondition, inTenantScope } from "../utils/tenant.js";
 
 const router = Router();
+
+// GET /:id/cover-image é consumido por <img> no PWA, que não envia header
+// Authorization — aceita o JWT também via ?token= (mesmo padrão do SSE, I-07).
+// Hoist do token para o header antes do middleware de auth.
+router.use("/:id/cover-image", (req, _res, next) => {
+  const token = req.query.token;
+  if (!req.headers.authorization && token) {
+    req.headers.authorization = `Bearer ${token}`;
+  }
+  // Resolve o tenant da claim (mesmo motivo do SSE): o middleware global de tenant
+  // roda sem req.user e cairia no fallback de dev (403 para usuários não-default).
+  try {
+    const claim = jwt.verify(req.headers.authorization.slice(7), process.env.JWT_SECRET);
+    if (claim.tenantId) req.tenantId = String(claim.tenantId);
+  } catch {
+    /* token ausente/inválido — o auth retornará 401 */
+  }
+  next();
+});
 
 // Todas as rotas deste arquivo requerem autenticação
 router.use(auth);

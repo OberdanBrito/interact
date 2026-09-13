@@ -296,14 +296,15 @@ backend único roteado por header.
 - **Componentes:** `backend` (model Comunicado + rotas `/api/posts/:id/cover-image`), `frontend_admin` (form-view), `frontend_pwa` (feed/templates)
 - **Prioridade:** Média
 - **Esforço:** M (2-3 dias)
-- **Status:** Aberto
+- **Status:** Concluído
 - **Decisão:** capa é eixo separado de `attachments` (download permanece intocado); staged como os anexos (post criado/atualizado via JSON, upload depois); binário servido com a mesma visibilidade do comunicado (`isPostEligible`) e escopo por tenant; `DELETE /api/posts/:id` remove o binário da capa junto com os anexos.
 - **Critérios de aceite:**
-  - [ ] `POST /api/posts/:id/cover-image` valida tipo/tamanho (`MAX_COVER_MB` 5, png/jpeg/gif/webp) e substitui capa anterior
-  - [ ] `GET .../cover-image` respeita `isPostEligible` (404 não-elegível/sem capa)
-  - [ ] Comunicado sem capa → `coverImage: null`; card sem capa mantém layout atual (sem espaço reservado)
-  - [ ] Editar comunicado sem tocar na capa preserva a capa existente
-  - [ ] Card do feed exibe capa como thumbnail (`object-fit: cover`, lazy) no topo; sheet exibe acima do título
+  - [x] `POST /api/posts/:id/cover-image` valida tipo/tamanho (`MAX_COVER_MB` 5, png/jpeg/gif/webp) e substitui capa anterior
+  - [x] `GET .../cover-image` respeita `isPostEligible` (404 não-elegível/sem capa)
+  - [x] Comunicado sem capa → `coverImage: null`; card sem capa mantém layout atual (sem espaço reservado)
+  - [x] Editar comunicado sem tocar na capa preserva a capa existente
+  - [x] Card do feed exibe capa como thumbnail (`object-fit: cover`, lazy) no topo; sheet exibe acima do título
+- **Concluído (13/09/2026):** capa implementada e validada. Backend: `POST/GET/DELETE /api/posts/:id/cover-image` (estagio separado, visibilidade `isPostEligible`, `MAX_COVER_MB`). PWA: `getCoverImageUrl(post.id)` resolve URL absoluta com `?token=` (tag `<img>` não envia header Authorization — hoist no backend, mesmo padrão do SSE da I-07); card exibe capa full-bleed (`object-fit: cover`, lazy, `margin: -16px`), card sem capa mantém layout. Admin: upload com preview e "Remover capa". Commits: backend `c2cfab6` (implementação) + `4a49d10` (fix token query); admin `0bc8c99`; PWA `53cbed4` (render) + `3a9c3e2` (fix full-bleed). QA: `npm run test:integration` 13 suítes verdes + `qa:i16` (40 ok) + build PWA limpo + Playwright (4 cards full-bleed, lazy-load, sheet). Change OpenSpec arquivada: `2026-09-13-i16-imagem-destaque`.
 
 ---
 
